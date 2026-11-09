@@ -29,7 +29,8 @@ internal sealed record TypeValidation(
 /// </param>
 /// <param name="TrimWarningTarget">
 /// The documentation ID of the property, when the trimmer's IL2026 for its attributes can be suppressed: the generated
-/// code avoids the reflection of every attribute constructor that requires unreferenced code
+/// code avoids the reflection of every attribute constructor that requires unreferenced code, and nobody wrote the
+/// accessors, which the suppression also covers
 /// </param>
 internal sealed record ValidatedProperty(
     string Name,
@@ -134,6 +135,18 @@ internal static class ValidationModel
     }
 
     /// <summary>
+    /// Whether nobody wrote the property's accessors: CommunityToolkit.Mvvm generates them for [ObservableProperty], and
+    /// auto-properties have none. A suppression for a property also covers its accessors, so it must not hide warnings
+    /// in accessor code someone wrote
+    /// </summary>
+    private static bool HasNoHandWrittenAccessors(ISymbol member) =>
+        member is IFieldSymbol
+        || member.DeclaringSyntaxReferences.All(r =>
+            r.GetSyntax() is PropertyDeclarationSyntax { ExpressionBody: null, AccessorList: { } accessors }
+            && accessors.Accessors.All(a => a is { Body: null, ExpressionBody: null })
+        );
+
+    /// <summary>
     /// The documentation ID of a property, also for one CommunityToolkit.Mvvm generates and this generator cannot see.
     /// The trimmer expects it without the <c>~</c> prefix that SuppressMessage uses
     /// </summary>
@@ -183,6 +196,19 @@ internal static class ValidationModel
         {
             bool isDisplay = SymbolEqualityComparer.Default.Equals(applied.Class, context.Known.DisplayAttribute);
             bool isValidation = KnownSymbols.InheritsFrom(applied.Class, context.Known.ValidationAttribute);
+            // The trimmer reports attributes where they are declared, so inherited ones are the base type's concern.
+            // Any other attribute that requires unreferenced code keeps the warnings of the whole property
+            if (
+                !applied.IsInherited
+                && applied.Constructor is { } constructor
+                && context.Known.RequiresUnreferencedCode(constructor)
+            )
+            {
+                if ((isDisplay || isValidation) && context.Known.CanSuppressTrimWarning(applied.Class, propertyType))
+                    hasSuppressibleTrimWarnings = true;
+                else
+                    hasUnsafeTrimWarnings = true;
+            }
             if (!isDisplay && !isValidation)
                 continue;
             hasValidationAttributes |= isValidation;
@@ -202,14 +228,6 @@ internal static class ValidationModel
                     $"[{applied.Class.Name}] uses a type or member that is not accessible from '{context.Type.Name}'"
                 );
                 continue;
-            }
-            // The trimmer reports attributes where they are declared, so inherited ones are the base type's concern
-            if (!applied.IsInherited && context.Known.RequiresUnreferencedCode(attribute.Constructor))
-            {
-                if (context.Known.CanSuppressTrimWarning(attribute.Class, propertyType))
-                    hasSuppressibleTrimWarnings = true;
-                else
-                    hasUnsafeTrimWarnings = true;
             }
             if (isDisplay)
             {
@@ -256,7 +274,9 @@ internal static class ValidationModel
             display,
             rules.ToImmutableArray(),
             isValidatedByBase,
-            hasSuppressibleTrimWarnings && !hasUnsafeTrimWarnings ? GetDocumentationId(context.Type, name) : null
+            hasSuppressibleTrimWarnings && !hasUnsafeTrimWarnings && HasNoHandWrittenAccessors(member)
+                ? GetDocumentationId(context.Type, name)
+                : null
         );
     }
 
@@ -488,6 +508,7 @@ internal static class ValidationModel
                                 attributeClass,
                                 syntax.GetLocation(),
                                 false,
+                                model.GetSymbolInfo(syntax).Symbol as IMethodSymbol,
                                 ([NotNullWhen(true)] out AttributeInfo? attribute, out string error) =>
                                     AttributeRenderer.TryCreate(syntax, attributeClass, model, out attribute, out error)
                             )
@@ -518,6 +539,7 @@ internal static class ValidationModel
                     attributeClass,
                     data.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
                     isInherited,
+                    data.AttributeConstructor,
                     ([NotNullWhen(true)] out AttributeInfo? attribute, out string error) =>
                         AttributeRenderer.TryCreate(data, out attribute, out error)
                 )
@@ -562,10 +584,13 @@ internal static class ValidationModel
         INamedTypeSymbol attributeClass,
         Location? location,
         bool isInherited,
+        IMethodSymbol? constructor,
         AttributeReader read
     )
     {
         private readonly AttributeReader _read = read;
+
+        public IMethodSymbol? Constructor { get; } = constructor;
 
         public INamedTypeSymbol Class { get; } = attributeClass;
 

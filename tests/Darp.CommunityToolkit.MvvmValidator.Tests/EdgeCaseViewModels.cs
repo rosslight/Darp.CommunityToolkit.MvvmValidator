@@ -173,12 +173,9 @@ public partial class StaticCompareViewModel : ValidatingObservableObject
 {
     public static string Expected => "x";
 
+    [ObservableProperty]
     [Compare(nameof(Expected))]
-    public string? Value
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    public partial string? Value { get; set; }
 }
 
 public partial class EmptyDisplayNameViewModel : ValidatingObservableObject

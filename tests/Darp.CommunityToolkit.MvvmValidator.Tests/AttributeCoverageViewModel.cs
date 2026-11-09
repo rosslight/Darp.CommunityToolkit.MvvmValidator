@@ -70,12 +70,9 @@ public sealed partial class AttributeCoverageViewModel : ValidatingObservableObj
     [Base64String]
     public partial string? Token { get; set; }
 
+    [ObservableProperty]
     [MinLength(1)]
-    public System.Collections.ICollection Tags
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = new[] { "new" };
+    public partial System.Collections.ICollection Tags { get; set; } = new[] { "new" };
 
     [CustomValidation(typeof(AttributeCoverageViewModel), nameof(ValidateInvite))]
     public string? InviteCode

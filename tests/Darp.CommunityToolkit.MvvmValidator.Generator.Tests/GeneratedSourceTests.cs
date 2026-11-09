@@ -53,7 +53,7 @@ public sealed class GeneratedSourceTests
     }
 
     [Fact]
-    public void TrimWarnings_ShouldOnlyBeSuppressedWhenEveryAttributeIsSafe()
+    public void TrimWarnings_ShouldOnlyBeSuppressedForSafeAttributesWithoutHandWrittenAccessors()
     {
         const string source = """
             using System;
@@ -69,7 +69,15 @@ public sealed class GeneratedSourceTests
 
                 [MinLength(1)]
                 [Range(typeof(DateTime), "2020-01-01", "2030-01-01")]
-                public string? Unsafe { get; set; }
+                public string? UnsafeAttribute { get; set; }
+
+                // The suppression would also cover this setter
+                [MinLength(1)]
+                public string? HandWrittenSetter
+                {
+                    get;
+                    set => field = value;
+                }
             }
             """;
 
@@ -80,6 +88,7 @@ public sealed class GeneratedSourceTests
         );
 
         generated.ShouldContain("Target = \"P:Sample.ViewModel.Safe\"");
-        generated.ShouldNotContain("P:Sample.ViewModel.Unsafe");
+        generated.ShouldNotContain("P:Sample.ViewModel.UnsafeAttribute");
+        generated.ShouldNotContain("P:Sample.ViewModel.HandWrittenSetter");
     }
 }
