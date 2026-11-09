@@ -169,6 +169,18 @@ public partial class CallerMemberNameViewModel : ValidatingObservableObject
     }
 }
 
+public partial class StaticCompareViewModel : ValidatingObservableObject
+{
+    public static string Expected => "x";
+
+    [Compare(nameof(Expected))]
+    public string? Value
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+}
+
 public partial class EmptyDisplayNameViewModel : ValidatingObservableObject
 {
     [Required]

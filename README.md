@@ -83,7 +83,7 @@ The package turns off the toolkit's MVVMTK0006, which only accepts `ObservableVa
 | DMV0001 | A validated type or one of its containing types is not partial, or is file-local |
 | DMV0002 | `[CustomValidation]` doesn't reference a single public static method with a matching signature that takes its arguments by value or `in` |
 | DMV0003 | An `[ObservableProperty]` member has validation attributes, but its type inherits neither `ValidatingObservableObject` nor `ObservableValidator` |
-| DMV0004 | `[Compare]` references a member that isn't a readable, accessible instance property |
+| DMV0004 | `[Compare]` references a member that isn't a readable, accessible property |
 | DMV0005 | Validation of a property can't be generated: an attribute argument isn't a constant, an attribute uses a type that isn't accessible from the view model, or the property is a ref struct, a pointer or `dynamic` |
 
 The trim analyzer reports IL2026 where `[Compare]`, `[MinLength]`, `[MaxLength]` or `[Length]` is applied.

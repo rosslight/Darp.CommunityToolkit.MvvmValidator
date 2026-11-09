@@ -54,10 +54,15 @@ internal sealed record CustomValidationRule(string Method, bool PassesContext, s
 
 /// <summary> Implements [Compare] by reading the other property directly instead of with reflection </summary>
 /// <param name="OtherProperty"> The name of the compared property </param>
+/// <param name="OtherValue"> The C# expression reading the compared property, which can be static </param>
 /// <param name="OtherDisplay"> The [Display] attribute of the compared property, if any </param>
 /// <param name="ErrorMessage"> A C# expression for the message format of the attribute, possibly the literal <c>null</c> </param>
-internal sealed record CompareRule(string OtherProperty, AttributeInfo? OtherDisplay, string ErrorMessage)
-    : PropertyRule;
+internal sealed record CompareRule(
+    string OtherProperty,
+    string OtherValue,
+    AttributeInfo? OtherDisplay,
+    string ErrorMessage
+) : PropertyRule;
 
 internal static class ValidationModel
 {
@@ -354,12 +359,15 @@ internal static class ValidationModel
                 otherDisplay = display;
             }
         }
-        return new CompareRule(otherProperty, otherDisplay, GetErrorMessage(attribute));
+        string otherValue = other.IsStatic
+            ? $"{AttributeRenderer.FullName(other.ContainingType)}.{AttributeRenderer.EscapeIdentifier(otherProperty)}"
+            : $"this.{AttributeRenderer.EscapeIdentifier(otherProperty)}";
+        return new CompareRule(otherProperty, otherValue, otherDisplay, GetErrorMessage(attribute));
     }
 
     /// <summary>
-    /// Finds the instance property <c>this.{name}</c> reads in the view model: the nearest declaration wins, so a
-    /// hiding member that is not a readable, accessible property makes the target invalid
+    /// Finds the property <c>{name}</c> means in the view model: the nearest declaration wins, so a hiding member that
+    /// is not a readable, accessible property makes the target invalid
     /// </summary>
     private static ISymbol? FindComparedProperty(BuildContext context, string name)
     {
@@ -374,8 +382,16 @@ internal static class ValidationModel
                     );
             if (member is null)
                 continue;
+            // Like CompareAttribute, which looks the property up with reflection, static properties are allowed
+            ITypeSymbol? type = member switch
+            {
+                IPropertySymbol { IsIndexer: false, CanBeReferencedByName: true } property => property.Type,
+                IFieldSymbol field when TryGetProperty(field, context.Known, out _, out ITypeSymbol? fieldType) =>
+                    fieldType,
+                _ => null,
+            };
             bool isValid =
-                TryGetProperty(member, context.Known, out _, out ITypeSymbol? type)
+                type is not null
                 && IsReadable(member)
                 && IsSupportedType(type)
                 && (

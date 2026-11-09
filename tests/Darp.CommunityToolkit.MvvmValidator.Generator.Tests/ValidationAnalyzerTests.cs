@@ -127,9 +127,6 @@ public sealed class ValidationAnalyzerTests
 
     [Theory]
     [InlineData("""[Compare("Missing")] public string? Name { get; set; }""")]
-    [InlineData(
-        """[Compare(nameof(Static))] public string? Name { get; set; } public static string? Static => null;"""
-    )]
     [InlineData("""[Compare(nameof(BaseViewModel.Hidden))] public string? Name { get; set; }""")]
     public async Task CompareWithUnreadableTarget_ShouldReportDMV0004(string members)
     {

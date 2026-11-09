@@ -232,7 +232,7 @@ internal static class ValidationSourceWriter
                 CustomValidationRule custom =>
                     $"CompleteCustomValidationResult({custom.Method}(value{(custom.PassesContext ? ", context" : "")}), {custom.ErrorMessage}, context)",
                 CompareRule compare =>
-                    $"ValidateCompare(value, this.{AttributeRenderer.EscapeIdentifier(compare.OtherProperty)}, {GetOtherDisplayName(compare.OtherProperty, displayFields)}, {compare.ErrorMessage}, context)",
+                    $"ValidateCompare(value, {compare.OtherValue}, {GetOtherDisplayName(compare.OtherProperty, displayFields)}, {compare.ErrorMessage}, context)",
                 _ => throw new InvalidOperationException($"Unknown rule {property.Rules[r]}"),
             };
             writer.WriteLine($"result = {expression};");

@@ -36,7 +36,7 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor InvalidCompareTarget = new(
         "DMV0004",
         "Invalid Compare target",
-        "[Compare] on '{0}' references '{1}', which is not a readable, accessible instance property of '{2}'",
+        "[Compare] on '{0}' references '{1}', which is not a readable, accessible property of '{2}'",
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true

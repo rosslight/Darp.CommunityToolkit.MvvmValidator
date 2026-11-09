@@ -107,6 +107,14 @@ public sealed class EdgeCaseTests
     }
 
     [Fact]
+    public void Compare_ShouldReadStaticTargets()
+    {
+        var viewModel = new StaticCompareViewModel { Value = "y" };
+
+        Messages(viewModel, nameof(viewModel.Value)).ShouldBe(["'Value' and 'Expected' do not match."]);
+    }
+
+    [Fact]
     public void EmptyDisplayName_ShouldFallBackToThePropertyName()
     {
         var viewModel = new EmptyDisplayNameViewModel();
