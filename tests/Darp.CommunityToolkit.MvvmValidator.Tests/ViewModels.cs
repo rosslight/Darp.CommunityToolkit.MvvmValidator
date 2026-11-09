@@ -48,7 +48,7 @@ public partial class RegistrationViewModel : ValidatingObservableObject
     public new void SetErrors(string propertyName, IEnumerable<ValidationResult> errors) =>
         base.SetErrors(propertyName, errors);
 
-    public new void ClearErrors(string? propertyName = null) => base.ClearErrors(propertyName);
+    public new void ClearErrors() => base.ClearErrors();
 
     public static ValidationResult? ValidateNickname(string? nickname, ValidationContext context)
     {

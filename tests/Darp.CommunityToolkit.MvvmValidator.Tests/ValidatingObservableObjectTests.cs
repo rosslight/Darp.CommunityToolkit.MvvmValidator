@@ -175,6 +175,17 @@ public sealed class ValidatingObservableObjectTests
     }
 
     [Fact]
+    public void ClearErrors_ShouldForgetValidatedProperties_SoAResetFormStaysClean()
+    {
+        var viewModel = new RegistrationViewModel { Password = "secret", ConfirmPassword = "other" };
+        viewModel.ClearErrors();
+
+        viewModel.Password = "changed";
+
+        viewModel.GetErrors(nameof(viewModel.ConfirmPassword)).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void ValidateProperty_ShouldThrow_ForPropertyWithoutValidation()
     {
         var viewModel = new RegistrationViewModel();

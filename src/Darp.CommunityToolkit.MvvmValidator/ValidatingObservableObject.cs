@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Darp.MvvmValidator;
@@ -60,29 +59,22 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     /// <summary> Validates the current value of a property </summary>
     /// <param name="propertyName"> The name of a property with validation attributes </param>
     /// <exception cref="ArgumentException"> The property has no validation attributes </exception>
-    protected void ValidateProperty([CallerMemberName] string propertyName = null!)
+    protected void ValidateProperty(string propertyName)
     {
         if (!TryValidateProperty(propertyName))
-        {
-            throw new ArgumentException(
-                $"'{GetType()}' has no generated validation for property '{propertyName}'. Make sure the property has validation attributes and the type and all containing types are partial.",
-                nameof(propertyName)
-            );
-        }
+            throw new ArgumentException($"'{GetType()}' has no validation for '{propertyName}'.", nameof(propertyName));
     }
 
     /// <summary> Validates the current value of every property with validation attributes </summary>
     protected void ValidateAllProperties() => ValidateAllPropertiesCore();
 
-    /// <summary> Removes the errors of a property, or of all properties </summary>
-    /// <param name="propertyName"> The property name, or <see langword="null"/> for all properties </param>
-    protected void ClearErrors(string? propertyName = null)
+    /// <summary>
+    /// Removes all errors and forgets which properties were validated, e.g. to reset a form. Use
+    /// <see cref="SetErrors"/> with no errors to clear a single property
+    /// </summary>
+    protected void ClearErrors()
     {
-        if (propertyName is not null)
-        {
-            SetErrors(propertyName, []);
-            return;
-        }
+        _validatedProperties.Clear();
         foreach (string name in _errors.Keys.ToArray())
             SetErrors(name, []);
     }
@@ -115,7 +107,6 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     /// <param name="e"> The event args </param>
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
-        ArgumentNullException.ThrowIfNull(e);
         if (!string.IsNullOrEmpty(e.PropertyName))
         {
             TryValidateProperty(e.PropertyName);
@@ -155,7 +146,7 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
 
     /// <summary> Applies the default message to the result of a <see cref="CustomValidationAttribute"/> method. Used by generated code </summary>
     /// <param name="result"> The result returned by the validation method </param>
-    /// <param name="errorMessage"> The <see cref="ValidationAttribute.ErrorMessage"/> set on the attribute </param>
+    /// <param name="errorMessage"> The message format of the attribute, or <see langword="null"/> for the default </param>
     /// <param name="context"> The validation context </param>
     /// <returns> The completed result </returns>
     [EditorBrowsable(EditorBrowsableState.Never)]
@@ -165,7 +156,6 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
         ValidationContext context
     )
     {
-        ArgumentNullException.ThrowIfNull(context);
         if (result is null || !string.IsNullOrEmpty(result.ErrorMessage))
             return result;
         string message = string.Format(
@@ -208,7 +198,7 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     /// <param name="value"> The value of the validated property </param>
     /// <param name="otherValue"> The value of the compared property </param>
     /// <param name="otherDisplayName"> The display name of the compared property </param>
-    /// <param name="errorMessage"> The <see cref="ValidationAttribute.ErrorMessage"/> set on the attribute </param>
+    /// <param name="errorMessage"> The message format of the attribute, or <see langword="null"/> for the default </param>
     /// <param name="context"> The validation context </param>
     /// <returns> <see langword="null"/> if both values are equal, an error otherwise </returns>
     [EditorBrowsable(EditorBrowsableState.Never)]
@@ -220,7 +210,6 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
         ValidationContext context
     )
     {
-        ArgumentNullException.ThrowIfNull(context);
         if (Equals(value, otherValue))
             return null;
         string message = string.Format(

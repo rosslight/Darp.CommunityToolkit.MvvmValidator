@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <WarningsAsErrors>Nullable</WarningsAsErrors>
+    <!-- Nullable warnings are errors, so null checks on parameters only repeat the contract -->
+    <NoWarn>$(NoWarn);CA1062</NoWarn>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- Version applied to published packages. Automatically updated by release-please -->
