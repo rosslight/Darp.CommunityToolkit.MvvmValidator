@@ -24,6 +24,17 @@
       ReferenceOutputAssembly="false"
       PrivateAssets="all"
     />
+    <ProjectReference
+      Include="..\Darp.CommunityToolkit.MvvmValidator.CodeFixers\Darp.CommunityToolkit.MvvmValidator.CodeFixers.csproj"
+      ReferenceOutputAssembly="false"
+      PrivateAssets="all"
+    />
+    <None
+      Include="..\Darp.CommunityToolkit.MvvmValidator.CodeFixers\bin\$(Configuration)\netstandard2.0\Darp.CommunityToolkit.MvvmValidator.CodeFixers.dll"
+      Pack="true"
+      PackagePath="analyzers/dotnet/cs"
+      Visible="false"
+    />
     <None
       Include="..\Darp.CommunityToolkit.MvvmValidator.Generator\bin\$(Configuration)\netstandard2.0\Darp.CommunityToolkit.MvvmValidator.Generator.dll"
       Pack="true"

@@ -80,7 +80,7 @@ The package turns off the toolkit's MVVMTK0006, which only accepts `ObservableVa
 
 | Id | Meaning |
 | --- | --- |
-| DMV0001 | A validated type or one of its containing types is not partial, or is file-local |
+| DMV0001 | A validated type or one of its containing types is not partial, or is file-local. A code fix adds the missing `partial` modifiers |
 | DMV0002 | `[CustomValidation]` doesn't reference a single public static method with a matching signature that takes its arguments by value or `in` |
 | DMV0003 | An `[ObservableProperty]` member has validation attributes, but its type inherits neither `ValidatingObservableObject` nor `ObservableValidator` |
 | DMV0004 | `[Compare]` references a member that isn't a readable, accessible property |

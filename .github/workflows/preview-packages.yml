@@ -78,6 +78,7 @@ jobs:
               if ($spec.package.metadata.id -ne $id) { throw "Wrong package ID in $id" }
               if (-not $archive.GetEntry('lib/net10.0/Darp.CommunityToolkit.MvvmValidator.dll')) { throw "Missing runtime assembly" }
               if (-not $archive.GetEntry('analyzers/dotnet/cs/Darp.CommunityToolkit.MvvmValidator.Generator.dll')) { throw "Missing bundled generator" }
+              if (-not $archive.GetEntry('analyzers/dotnet/cs/Darp.CommunityToolkit.MvvmValidator.CodeFixers.dll')) { throw "Missing bundled code fixers" }
               if (-not $archive.GetEntry('buildTransitive/Darp.CommunityToolkit.MvvmValidator.props')) { throw "Missing MVVMTK0006 suppression" }
               $toolkit = $spec.SelectSingleNode("//*[local-name()='dependency' and @id='CommunityToolkit.Mvvm']")
               if (-not $toolkit -or $toolkit.GetAttribute('exclude') -match 'Analyzers') {
