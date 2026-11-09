@@ -1,0 +1,2 @@
+# release-please rewrites the version with its own XML formatting
+src/Directory.Build.props

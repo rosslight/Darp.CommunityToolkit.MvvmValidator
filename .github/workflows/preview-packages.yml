@@ -101,12 +101,6 @@ jobs:
     permissions:
       packages: write
     steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
-          sparse-checkout: global.json
-          sparse-checkout-cone-mode: false
-
       - uses: actions/download-artifact@v8.0.2
         with:
           name: preview-packages
