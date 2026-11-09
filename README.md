@@ -194,8 +194,8 @@ The package turns off the toolkit's MVVMTK0006, which only accepts `ObservableVa
 | DMV0004 | A `[Compare]` target is not a readable, accessible property |
 | DMV0005 | An attribute or property cannot be expressed in generated code, e.g. a ref struct or `dynamic` property |
 
-`[Compare]`, `[MinLength]`, `[MaxLength]` and `[Length]` make the trim analyzer warn where they are applied. The package
-suppresses these warnings when the generated code avoids the reflection they warn about.
+`[Compare]`, `[MinLength]`, `[MaxLength]` and `[Length]` make the trim analyzer and the trimmer warn where they are
+applied. The package suppresses these warnings when the generated code avoids the reflection they warn about.
 
 ## Development
 

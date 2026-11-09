@@ -27,12 +27,17 @@ internal sealed record TypeValidation(
 /// <param name="IsValidatedByBase">
 /// Whether a base type validates a property with this name, so its ValidateAllProperties already covers it
 /// </param>
+/// <param name="TrimWarningTarget">
+/// The documentation ID of the property, when the trimmer's IL2026 for its attributes can be suppressed: the generated
+/// code avoids the reflection of every attribute constructor that requires unreferenced code
+/// </param>
 internal sealed record ValidatedProperty(
     string Name,
     string TypeName,
     AttributeInfo? Display,
     ImmutableArray<PropertyRule> Rules,
-    bool IsValidatedByBase
+    bool IsValidatedByBase,
+    string? TrimWarningTarget
 );
 
 internal abstract record PropertyRule;
@@ -128,6 +133,13 @@ internal static class ValidationModel
         }
     }
 
+    /// <summary>
+    /// The documentation ID of a property, also for one CommunityToolkit.Mvvm generates and this generator cannot see.
+    /// The trimmer expects it without the <c>~</c> prefix that SuppressMessage uses
+    /// </summary>
+    private static string GetDocumentationId(INamedTypeSymbol type, string propertyName) =>
+        $"P:{type.GetDocumentationCommentId()?.Substring(2)}.{propertyName}";
+
     /// <summary> Mirrors how CommunityToolkit.Mvvm names the property generated for an [ObservableProperty] field </summary>
     private static string GetGeneratedPropertyName(string fieldName)
     {
@@ -165,6 +177,8 @@ internal static class ValidationModel
         AttributeRule? required = null;
         var hasValidationAttributes = false;
         var hasOwnAttributes = false;
+        var hasSuppressibleTrimWarnings = false;
+        var hasUnsafeTrimWarnings = false;
         foreach (AppliedAttribute applied in GetAppliedAttributes(member, context.Compilation))
         {
             bool isDisplay = SymbolEqualityComparer.Default.Equals(applied.Class, context.Known.DisplayAttribute);
@@ -188,6 +202,14 @@ internal static class ValidationModel
                     $"[{applied.Class.Name}] uses a type or member that is not accessible from '{context.Type.Name}'"
                 );
                 continue;
+            }
+            // The trimmer reports attributes where they are declared, so inherited ones are the base type's concern
+            if (!applied.IsInherited && context.Known.RequiresUnreferencedCode(attribute.Constructor))
+            {
+                if (context.Known.CanSuppressTrimWarning(attribute.Class, propertyType))
+                    hasSuppressibleTrimWarnings = true;
+                else
+                    hasUnsafeTrimWarnings = true;
             }
             if (isDisplay)
             {
@@ -233,7 +255,8 @@ internal static class ValidationModel
             AttributeRenderer.FullNameWithNullability(propertyType),
             display,
             rules.ToImmutableArray(),
-            isValidatedByBase
+            isValidatedByBase,
+            hasSuppressibleTrimWarnings && !hasUnsafeTrimWarnings ? GetDocumentationId(context.Type, name) : null
         );
     }
 

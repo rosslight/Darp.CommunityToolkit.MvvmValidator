@@ -51,4 +51,35 @@ public sealed class GeneratedSourceTests
 
         return Verify(RunGenerator(source));
     }
+
+    [Fact]
+    public void TrimWarnings_ShouldOnlyBeSuppressedWhenEveryAttributeIsSafe()
+    {
+        const string source = """
+            using System;
+            using System.ComponentModel.DataAnnotations;
+            using Darp.MvvmValidator;
+
+            namespace Sample;
+
+            public partial class ViewModel : ValidatingObservableObject
+            {
+                [MinLength(1)]
+                public string? Safe { get; set; }
+
+                [MinLength(1)]
+                [Range(typeof(DateTime), "2020-01-01", "2030-01-01")]
+                public string? Unsafe { get; set; }
+            }
+            """;
+
+        string generated = string.Concat(
+            RunGenerator(source)
+                .GetRunResult()
+                .GeneratedTrees.Select(tree => tree.GetText(TestContext.Current.CancellationToken))
+        );
+
+        generated.ShouldContain("Target = \"P:Sample.ViewModel.Safe\"");
+        generated.ShouldNotContain("P:Sample.ViewModel.Unsafe");
+    }
 }

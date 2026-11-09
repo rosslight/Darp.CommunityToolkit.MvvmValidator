@@ -43,6 +43,13 @@ jobs:
         working-directory: ./artifacts/native-aot-tests
         run: ./Darp.CommunityToolkit.MvvmValidator.Tests
 
+      # Unlike Native AOT, trimming keeps attributes on members and warns about the ones that require unreferenced code
+      - name: Publish runtime tests trimmed
+        run: dotnet publish tests/Darp.CommunityToolkit.MvvmValidator.Tests/Darp.CommunityToolkit.MvvmValidator.Tests.csproj -c Release -r linux-x64 --self-contained -p:PublishTrimmedTests=true -o ./artifacts/trimmed-tests /warnaserror
+      - name: Test trimmed
+        working-directory: ./artifacts/trimmed-tests
+        run: ./Darp.CommunityToolkit.MvvmValidator.Tests
+
   warnings-release:
     runs-on: ubuntu-24.04
     steps:
