@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Darp.CommunityToolkit.MvvmValidator.CodeFixers/Darp.CommunityToolkit.MvvmValidator.CodeFixers.csproj" />
     <Project Path="src/Darp.CommunityToolkit.MvvmValidator.Generator/Darp.CommunityToolkit.MvvmValidator.Generator.csproj" />
     <Project Path="src/Darp.CommunityToolkit.MvvmValidator/Darp.CommunityToolkit.MvvmValidator.csproj" />
   </Folder>
