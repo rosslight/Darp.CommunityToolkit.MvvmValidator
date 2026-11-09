@@ -65,6 +65,14 @@ internal static class AttributeRenderer
 {
     public static string FullName(ITypeSymbol type) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+    /// <summary> The fully qualified type as it is declared, e.g. <c>string?</c> for a nullable reference type </summary>
+    public static string FullNameWithNullability(ITypeSymbol type) => type.ToDisplayString(s_nullableFormat);
+
+    private static readonly SymbolDisplayFormat s_nullableFormat =
+        SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
+        );
+
     /// <summary> A namespace or type parameter name that is valid C#, e.g. with keywords escaped </summary>
     public static string DisplayName(ISymbol symbol) => symbol.ToDisplayString(s_escapedFormat);
 

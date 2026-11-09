@@ -16,7 +16,7 @@ namespace Sample
                 switch (propertyName)
                 {
                     case "Value":
-                        __ValidateValue(errors);
+                        __ValidateValue(this.Value, errors);
                         return true;
                     default:
                         return base.TryValidatePropertyCore(propertyName, errors);
@@ -31,11 +31,11 @@ namespace Sample
                 ValidateProperty("Value");
             }
 
-            private void __ValidateValue(global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+            private void __ValidateValue(T? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
             {
                 global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("Value", "Value");
                 global::System.ComponentModel.DataAnnotations.ValidationResult? result;
-                result = __Value_Rule0.GetValidationResult(this.Value, context);
+                result = __Value_Rule0.GetValidationResult(value, context);
                 if (result is not null)
                 {
                     errors.Add(result);

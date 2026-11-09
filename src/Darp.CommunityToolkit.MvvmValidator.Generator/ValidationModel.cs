@@ -21,6 +21,7 @@ internal sealed record TypeValidation(
 
 /// <summary> A property with validation attributes </summary>
 /// <param name="Name"> The property name. For an [ObservableProperty] field, the name of the generated property </param>
+/// <param name="TypeName"> The fully qualified property type, including its nullable annotation </param>
 /// <param name="Display"> The [Display] attribute, if any </param>
 /// <param name="Rules"> The rules in execution order. A required rule always comes first </param>
 /// <param name="IsValidatedByBase">
@@ -28,6 +29,7 @@ internal sealed record TypeValidation(
 /// </param>
 internal sealed record ValidatedProperty(
     string Name,
+    string TypeName,
     AttributeInfo? Display,
     ImmutableArray<PropertyRule> Rules,
     bool IsValidatedByBase
@@ -182,7 +184,13 @@ internal static class ValidationModel
             return null;
         if (required is not null)
             rules.Insert(0, required);
-        return new ValidatedProperty(name, display, rules.ToImmutableArray(), isValidatedByBase);
+        return new ValidatedProperty(
+            name,
+            AttributeRenderer.FullNameWithNullability(propertyType),
+            display,
+            rules.ToImmutableArray(),
+            isValidatedByBase
+        );
     }
 
     private static PropertyRule? CreateRule(

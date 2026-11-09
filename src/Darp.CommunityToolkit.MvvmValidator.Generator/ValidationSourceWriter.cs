@@ -98,7 +98,10 @@ internal static class ValidationSourceWriter
         {
             writer.WriteLine($"case {AttributeRenderer.StringLiteral(property.Name)}:");
             writer.Indent++;
-            writer.WriteLine($"{GetValidateMethod(property.Name)}(errors);");
+            // The current value is read here, so the validation method can also check a value before it is stored
+            writer.WriteLine(
+                $"{GetValidateMethod(property.Name)}(this.{AttributeRenderer.EscapeIdentifier(property.Name)}, errors);"
+            );
             writer.WriteLine("return true;");
             writer.Indent--;
         }
@@ -193,9 +196,9 @@ internal static class ValidationSourceWriter
         Dictionary<string, AttributeInfo> displays
     )
     {
-        string value = $"this.{AttributeRenderer.EscapeIdentifier(property.Name)}";
+        const string value = "value";
         writer.WriteLine(
-            $"private void {GetValidateMethod(property.Name)}(global::System.Collections.Generic.ICollection<{ValidationResult}> errors)"
+            $"private void {GetValidateMethod(property.Name)}({property.TypeName} value, global::System.Collections.Generic.ICollection<{ValidationResult}> errors)"
         );
         writer.WriteLine("{");
         // A property hiding a validated base property with 'new' can have no rules at all

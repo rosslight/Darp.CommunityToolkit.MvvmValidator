@@ -20,16 +20,16 @@ namespace Sample
             switch (propertyName)
             {
                 case "UserName":
-                    __ValidateUserName(errors);
+                    __ValidateUserName(this.UserName, errors);
                     return true;
                 case "Password":
-                    __ValidatePassword(errors);
+                    __ValidatePassword(this.Password, errors);
                     return true;
                 case "ConfirmPassword":
-                    __ValidateConfirmPassword(errors);
+                    __ValidateConfirmPassword(this.ConfirmPassword, errors);
                     return true;
                 case "InviteCode":
-                    __ValidateInviteCode(errors);
+                    __ValidateInviteCode(this.InviteCode, errors);
                     return true;
                 default:
                     return base.TryValidatePropertyCore(propertyName, errors);
@@ -60,56 +60,56 @@ namespace Sample
             base.ValidateDependentPropertiesCore(propertyName);
         }
 
-        private void __ValidateUserName(global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+        private void __ValidateUserName(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
         {
             global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("UserName", __UserName_Display.GetName() ?? "UserName");
             global::System.ComponentModel.DataAnnotations.ValidationResult? result;
-            result = __UserName_Rule0.GetValidationResult(this.UserName, context);
+            result = __UserName_Rule0.GetValidationResult(value, context);
             if (result is not null)
             {
                 errors.Add(result);
                 return;
             }
-            result = __UserName_Rule1.GetValidationResult(this.UserName, context);
+            result = __UserName_Rule1.GetValidationResult(value, context);
             if (result is not null)
             {
                 errors.Add(result);
             }
         }
 
-        private void __ValidatePassword(global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+        private void __ValidatePassword(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
         {
             global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("Password", "Password");
             global::System.ComponentModel.DataAnnotations.ValidationResult? result;
-            result = __Password_Rule0.GetValidationResult(this.Password, context);
+            result = __Password_Rule0.GetValidationResult(value, context);
             if (result is not null)
             {
                 errors.Add(result);
                 return;
             }
-            result = __Password_Rule1.GetValidationResult(this.Password, context);
+            result = __Password_Rule1.GetValidationResult(value, context);
             if (result is not null)
             {
                 errors.Add(result);
             }
         }
 
-        private void __ValidateConfirmPassword(global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+        private void __ValidateConfirmPassword(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
         {
             global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("ConfirmPassword", "ConfirmPassword");
             global::System.ComponentModel.DataAnnotations.ValidationResult? result;
-            result = ValidateCompare(this.ConfirmPassword, this.Password, "Password", null, context);
+            result = ValidateCompare(value, this.Password, "Password", null, context);
             if (result is not null)
             {
                 errors.Add(result);
             }
         }
 
-        private void __ValidateInviteCode(global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+        private void __ValidateInviteCode(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
         {
             global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("InviteCode", "InviteCode");
             global::System.ComponentModel.DataAnnotations.ValidationResult? result;
-            result = CompleteCustomValidationResult(global::Sample.SignUpViewModel.ValidateInvite(this.InviteCode, context), null, context);
+            result = CompleteCustomValidationResult(global::Sample.SignUpViewModel.ValidateInvite(value, context), null, context);
             if (result is not null)
             {
                 errors.Add(result);
