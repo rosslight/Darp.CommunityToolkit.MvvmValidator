@@ -58,6 +58,9 @@ public partial class SignUpViewModel : ValidatingObservableObject
   The next validation of that property replaces them.
 - `[CustomValidation]` calls the method directly, and `[Compare]` reads the other property directly.
   Both work without reflection.
+- Messages and display names can come from resources (`ErrorMessageResourceType`/`ErrorMessageResourceName`,
+  `[Display(ResourceType = ...)]`). The resource properties are read with reflection that the trimmer can prove through
+  `[DynamicallyAccessedMembers]`, so they also work with Native AOT.
 - When the target of a `[Compare]` changes, the comparing property is validated again, but only if it was validated
   before. An untouched "repeat password" field stays free of errors while the user types the password.
 
@@ -78,7 +81,7 @@ The package turns off the toolkit's MVVMTK0006, which only accepts `ObservableVa
 | DMV0002 | `[CustomValidation]` doesn't reference a single public static method with a matching signature |
 | DMV0003 | An `[ObservableProperty]` member has validation attributes, but its type inherits neither `ValidatingObservableObject` nor `ObservableValidator` |
 | DMV0004 | `[Compare]` references a member that isn't a readable property |
-| DMV0005 | An attribute argument can't be reproduced in generated code, or `[Compare]`/`[CustomValidation]` uses resource messages |
+| DMV0005 | An attribute argument can't be reproduced in generated code, or the resource message of a `[Compare]`/`[CustomValidation]` doesn't name a static string property |
 
 The trim analyzer reports IL2026 where `[Compare]`, `[MinLength]`, `[MaxLength]` or `[Length]` is applied.
 The package suppresses these warnings when the generated code never reaches the reflection they warn about.

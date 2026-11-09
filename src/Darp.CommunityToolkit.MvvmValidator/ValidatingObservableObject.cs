@@ -1,6 +1,7 @@
 using System.Collections;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -176,6 +177,27 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
         return new ValidationResult(message, result.MemberNames);
     }
 
+    /// <summary>
+    /// Reads a message format from a resource, with the lookup and checks of <see cref="ValidationAttribute"/>.
+    /// Used by generated code for attributes it implements itself
+    /// </summary>
+    /// <param name="resourceType"> The <see cref="ValidationAttribute.ErrorMessageResourceType"/> set on the attribute </param>
+    /// <param name="resourceName"> The <see cref="ValidationAttribute.ErrorMessageResourceName"/> set on the attribute </param>
+    /// <returns> The message format in the current UI culture </returns>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected static string GetResourceMessage(
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties
+        )]
+            Type resourceType,
+        string resourceName
+    ) =>
+        new ResourceMessageAttribute
+        {
+            ErrorMessageResourceType = resourceType,
+            ErrorMessageResourceName = resourceName,
+        }.MessageFormat;
+
     /// <summary> Implements <see cref="CompareAttribute"/> without reflection. Used by generated code </summary>
     /// <param name="value"> The value of the validated property </param>
     /// <param name="otherValue"> The value of the compared property </param>
@@ -214,6 +236,12 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     /// <summary> Validates all properties with validation attributes. Overridden by generated code </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected virtual void ValidateAllPropertiesCore() { }
+
+    /// <summary> Exposes the resource lookup of <see cref="ValidationAttribute"/>, which is protected </summary>
+    private sealed class ResourceMessageAttribute : ValidationAttribute
+    {
+        public string MessageFormat => ErrorMessageString;
+    }
 
     private bool TryValidateProperty(string propertyName)
     {

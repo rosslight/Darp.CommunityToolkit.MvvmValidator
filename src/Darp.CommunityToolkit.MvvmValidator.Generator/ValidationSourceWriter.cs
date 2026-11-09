@@ -218,9 +218,9 @@ internal static class ValidationSourceWriter
             {
                 AttributeRule => $"{GetRuleField(property.Name, i)}.GetValidationResult({value}, context)",
                 CustomValidationRule custom =>
-                    $"CompleteCustomValidationResult({custom.Method}({value}{(custom.PassesContext ? ", context" : "")}), {AttributeRenderer.StringLiteral(custom.ErrorMessage)}, context)",
+                    $"CompleteCustomValidationResult({custom.Method}({value}{(custom.PassesContext ? ", context" : "")}), {custom.ErrorMessage}, context)",
                 CompareRule compare =>
-                    $"ValidateCompare({value}, {compare.OtherValue}, {GetDisplayName(compare.OtherProperty, displays)}, {AttributeRenderer.StringLiteral(compare.ErrorMessage)}, context)",
+                    $"ValidateCompare({value}, {compare.OtherValue}, {GetDisplayName(compare.OtherProperty, displays)}, {compare.ErrorMessage}, context)",
                 _ => throw new InvalidOperationException($"Unknown rule {property.Rules[i]}"),
             };
             writer.WriteLine($"result = {expression};");
