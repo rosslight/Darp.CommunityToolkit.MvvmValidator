@@ -147,8 +147,11 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     /// <param name="displayName"> The display name of the validated property </param>
     /// <returns> The validation context </returns>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected ValidationContext CreateValidationContext(string propertyName, string displayName) =>
-        new(this, displayName, _serviceProvider, _items) { MemberName = propertyName };
+    protected ValidationContext CreateValidationContext(string propertyName, string? displayName) =>
+        new(this, string.IsNullOrEmpty(displayName) ? propertyName : displayName, _serviceProvider, _items)
+        {
+            MemberName = propertyName,
+        };
 
     /// <summary> Applies the default message to the result of a <see cref="CustomValidationAttribute"/> method. Used by generated code </summary>
     /// <param name="result"> The result returned by the validation method </param>

@@ -83,6 +83,16 @@ public sealed class EdgeCaseTests
     }
 
     [Fact]
+    public void EmptyDisplayName_ShouldFallBackToThePropertyName()
+    {
+        var viewModel = new EmptyDisplayNameViewModel();
+
+        viewModel.ValidateProperty(nameof(viewModel.Unnamed));
+
+        Messages(viewModel, nameof(viewModel.Unnamed)).ShouldBe(["The Unnamed field is required."]);
+    }
+
+    [Fact]
     public void Compare_ShouldReadStaticTargets()
     {
         var viewModel = new StaticCompareViewModel { Value = "y" };

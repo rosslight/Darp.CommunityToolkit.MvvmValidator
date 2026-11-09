@@ -121,6 +121,15 @@ public partial class InheritanceViewModel : InheritanceBaseViewModel
     public new string Hidden => "okay";
 }
 
+public partial class EmptyDisplayNameViewModel : ValidatingObservableObject
+{
+    [Required]
+    [Display(Name = "")]
+    public string? Unnamed { get; set; }
+
+    public new void ValidateProperty(string propertyName) => base.ValidateProperty(propertyName);
+}
+
 public partial class StaticCompareViewModel : ValidatingObservableObject
 {
     public static string Expected => "x";
