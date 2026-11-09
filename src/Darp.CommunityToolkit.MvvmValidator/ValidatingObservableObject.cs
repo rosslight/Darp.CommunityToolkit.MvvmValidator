@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Darp.MvvmValidator;
@@ -57,9 +58,9 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     IEnumerable INotifyDataErrorInfo.GetErrors(string? propertyName) => GetErrors(propertyName);
 
     /// <summary> Validates the current value of a property </summary>
-    /// <param name="propertyName"> The name of a property with validation attributes </param>
+    /// <param name="propertyName"> The name of a property with validation attributes, by default the calling member </param>
     /// <exception cref="ArgumentException"> The property has no validation attributes </exception>
-    protected void ValidateProperty(string propertyName)
+    protected void ValidateProperty([CallerMemberName] string propertyName = "")
     {
         if (!TryValidateProperty(propertyName))
             throw new ArgumentException($"'{GetType()}' has no validation for '{propertyName}'.", nameof(propertyName));
@@ -69,11 +70,18 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     protected void ValidateAllProperties() => ValidateAllPropertiesCore();
 
     /// <summary>
-    /// Removes all errors and forgets which properties were validated, e.g. to reset a form. Use
-    /// <see cref="SetErrors"/> with no errors to clear a single property
+    /// Removes the errors of a property, or of all properties, and forgets that they were validated. A form reset this
+    /// way stays free of errors until its properties change again
     /// </summary>
-    protected void ClearErrors()
+    /// <param name="propertyName"> The property name, or <see langword="null"/> or empty for all properties </param>
+    protected void ClearErrors(string? propertyName = null)
     {
+        if (!string.IsNullOrEmpty(propertyName))
+        {
+            _validatedProperties.Remove(propertyName);
+            SetErrors(propertyName, []);
+            return;
+        }
         _validatedProperties.Clear();
         foreach (string name in _errors.Keys.ToArray())
             SetErrors(name, []);

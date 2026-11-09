@@ -154,6 +154,21 @@ public partial class ServiceViewModel(IServiceProvider serviceProvider, IDiction
     public new void ValidateProperty(string propertyName) => base.ValidateProperty(propertyName);
 }
 
+public partial class CallerMemberNameViewModel : ValidatingObservableObject
+{
+    // Validates through [CallerMemberName] without raising PropertyChanged
+    [Required]
+    public string? Code
+    {
+        get;
+        set
+        {
+            field = value;
+            ValidateProperty();
+        }
+    }
+}
+
 public partial class EmptyDisplayNameViewModel : ValidatingObservableObject
 {
     [Required]

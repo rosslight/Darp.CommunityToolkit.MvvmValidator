@@ -186,6 +186,28 @@ public sealed class ValidatingObservableObjectTests
     }
 
     [Fact]
+    public void ClearErrors_ForOneProperty_ShouldKeepTheErrorsOfOtherProperties()
+    {
+        var viewModel = new RegistrationViewModel();
+        viewModel.ValidateAllProperties();
+
+        viewModel.ClearErrors(nameof(viewModel.UserName));
+
+        viewModel.GetErrors(nameof(viewModel.UserName)).ShouldBeEmpty();
+        viewModel.GetErrors(nameof(viewModel.Email)).ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void ValidateProperty_ShouldDefaultToTheCallingProperty()
+    {
+        var viewModel = new CallerMemberNameViewModel();
+
+        viewModel.Code = null;
+
+        viewModel.GetErrors(nameof(viewModel.Code)).ShouldHaveSingleItem();
+    }
+
+    [Fact]
     public void ValidateProperty_ShouldThrow_ForPropertyWithoutValidation()
     {
         var viewModel = new RegistrationViewModel();

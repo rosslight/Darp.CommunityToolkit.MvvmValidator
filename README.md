@@ -56,7 +56,8 @@ public partial class SignUpViewModel : ValidatingObservableObject
 - `ValidateAllProperties()` validates the current values, for example from the constructor.
 - `SetErrors(propertyName, errors)` publishes results from asynchronous or server-side validation.
   The next validation of that property replaces them. `ErrorsChanged` is only raised when the messages change.
-- `ClearErrors()` removes all errors and forgets which properties were validated, e.g. to reset a form.
+- `ClearErrors()` removes all errors, `ClearErrors(propertyName)` those of one property. Both forget that the
+  properties were validated, so a reset form stays free of errors until its properties change again.
 - `[CustomValidation]` calls the method directly, and `[Compare]` reads the other property directly.
   Both work without reflection.
 - Messages and display names can come from resources (`ErrorMessageResourceType`/`ErrorMessageResourceName`,
