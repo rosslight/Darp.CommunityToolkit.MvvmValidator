@@ -10,7 +10,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- Version applied to published packages. Automatically updated by release-please -->
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
 
     <!-- Nuget Package -->
     <Authors>rosslight GmbH</Authors>

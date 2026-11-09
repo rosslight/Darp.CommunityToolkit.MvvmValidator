@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator/compare/v0.1.0...v0.1.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* suppress trimmer warnings for attributes the generated code handles ([79ffaf5](https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator/commit/79ffaf5f2bcbaf769b5f9f310166b275da76f0de))
+
 ## 0.1.0 (2026-11-09)
 
 
