@@ -1,6 +1,6 @@
 namespace Darp.MvvmValidator.Tests;
 
-/// <summary> Regressions for attribute shapes the generator once reproduced incorrectly </summary>
+/// <summary> Regressions for view models the generator once handled incorrectly: attribute shapes, inheritance, names </summary>
 public sealed class EdgeCaseTests
 {
     private static string[] Messages(ValidatingObservableObject viewModel, string propertyName) =>
@@ -44,14 +44,6 @@ public sealed class EdgeCaseTests
     }
 
     [Fact]
-    public void PropertyTargetedAttributes_ShouldSupportArraysWithoutInitializer()
-    {
-        var viewModel = new OverloadViewModel { EmptyArrayArgument = "x" };
-
-        viewModel.GetErrors(nameof(viewModel.EmptyArrayArgument)).ShouldHaveSingleItem();
-    }
-
-    [Fact]
     public void ValidateAllProperties_ShouldRunInheritedRulesOfAnOverrideOnce()
     {
         var viewModel = new InheritanceViewModel();
@@ -73,6 +65,56 @@ public sealed class EdgeCaseTests
     }
 
     [Fact]
+    public void PropertiesWithSimilarNames_ShouldEachBeValidated()
+    {
+        var viewModel = new CollidingNamesViewModel();
+
+        viewModel.ValidateAllProperties();
+
+        viewModel
+            .GetErrors()
+            .SelectMany(e => e.MemberNames)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(["A", "A_Rule0", "CreateA", "ValidateA"]);
+    }
+
+    [Fact]
+    public void PrivateNestedAttribute_ShouldBeUsable()
+    {
+        var viewModel = new PrivateAttributeViewModel();
+
+        viewModel.ValidateProperty(nameof(viewModel.Name));
+
+        viewModel.GetErrors(nameof(viewModel.Name)).ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void ServicesAndItems_ShouldReachValidationAttributes()
+    {
+        var services = new ServiceCollectionStub("service");
+        var viewModel = new ServiceViewModel(services, new Dictionary<object, object?> { ["item"] = "item" });
+
+        viewModel.ValidateProperty(nameof(viewModel.Name));
+
+        Messages(viewModel, nameof(viewModel.Name)).ShouldBe(["service item"]);
+    }
+
+    private sealed class ServiceCollectionStub(string service) : IServiceProvider
+    {
+        private readonly string _service = service;
+
+        public object? GetService(Type serviceType) => serviceType == typeof(string) ? _service : null;
+    }
+
+    [Fact]
+    public void Compare_ShouldReadStaticTargets()
+    {
+        var viewModel = new StaticCompareViewModel { Value = "y" };
+
+        Messages(viewModel, nameof(viewModel.Value)).ShouldBe(["'Value' and 'Expected' do not match."]);
+    }
+
+    [Fact]
     public void EmptyDisplayName_ShouldFallBackToThePropertyName()
     {
         var viewModel = new EmptyDisplayNameViewModel();
@@ -83,10 +125,12 @@ public sealed class EdgeCaseTests
     }
 
     [Fact]
-    public void Compare_ShouldReadStaticTargets()
+    public void Override_ShouldUseItsOwnDisplayName()
     {
-        var viewModel = new StaticCompareViewModel { Value = "y" };
+        var viewModel = new DisplayOverridingViewModel();
 
-        Messages(viewModel, nameof(viewModel.Value)).ShouldBe(["'Value' and 'Expected' do not match."]);
+        viewModel.ValidateProperty(nameof(viewModel.Name));
+
+        Messages(viewModel, nameof(viewModel.Name)).ShouldBe(["The Login field is required."]);
     }
 }

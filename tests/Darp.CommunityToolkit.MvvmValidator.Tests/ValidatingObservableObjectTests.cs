@@ -150,6 +150,20 @@ public sealed class ValidatingObservableObjectTests
     }
 
     [Fact]
+    public void SetErrors_ShouldReplaceResultsWithTheSameMessage_WithoutRaisingErrorsChanged()
+    {
+        var viewModel = new RegistrationViewModel { UserName = "valid" };
+        viewModel.SetErrors(nameof(viewModel.UserName), [new ValidationResult("Taken", ["Old"])]);
+        var raised = 0;
+        viewModel.ErrorsChanged += (_, _) => raised++;
+
+        viewModel.SetErrors(nameof(viewModel.UserName), [new ValidationResult("Taken", ["New"])]);
+
+        viewModel.GetErrors(nameof(viewModel.UserName)).Single().MemberNames.ShouldBe(["New"]);
+        raised.ShouldBe(0);
+    }
+
+    [Fact]
     public void ClearErrors_ShouldRemoveAllErrors()
     {
         var viewModel = new RegistrationViewModel();
@@ -158,6 +172,39 @@ public sealed class ValidatingObservableObjectTests
         viewModel.ClearErrors();
 
         viewModel.HasErrors.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ClearErrors_ShouldForgetValidatedProperties_SoAResetFormStaysClean()
+    {
+        var viewModel = new RegistrationViewModel { Password = "secret", ConfirmPassword = "other" };
+        viewModel.ClearErrors();
+
+        viewModel.Password = "changed";
+
+        viewModel.GetErrors(nameof(viewModel.ConfirmPassword)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ClearErrors_ForOneProperty_ShouldKeepTheErrorsOfOtherProperties()
+    {
+        var viewModel = new RegistrationViewModel();
+        viewModel.ValidateAllProperties();
+
+        viewModel.ClearErrors(nameof(viewModel.UserName));
+
+        viewModel.GetErrors(nameof(viewModel.UserName)).ShouldBeEmpty();
+        viewModel.GetErrors(nameof(viewModel.Email)).ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void ValidateProperty_ShouldDefaultToTheCallingProperty()
+    {
+        var viewModel = new CallerMemberNameViewModel();
+
+        viewModel.Code = null;
+
+        viewModel.GetErrors(nameof(viewModel.Code)).ShouldHaveSingleItem();
     }
 
     [Fact]

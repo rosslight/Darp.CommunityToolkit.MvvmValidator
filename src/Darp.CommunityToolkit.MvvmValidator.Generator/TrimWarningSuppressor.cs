@@ -47,7 +47,7 @@ public sealed class TrimWarningSuppressor : DiagnosticSuppressor
                 TryGetMember(declaration, model, known, out INamedTypeSymbol? type, out ITypeSymbol? propertyType)
                 && known.IsValidatingObservableObject(type)
                 && AttributeRenderer.GetAttributeClass(attribute, model) is { } attributeClass
-                && known.IsTrimSafeFor(attributeClass, propertyType)
+                && known.CanSuppressTrimWarning(attributeClass, propertyType)
             )
             {
                 context.ReportSuppression(Suppression.Create(AttributeUsage, diagnostic));

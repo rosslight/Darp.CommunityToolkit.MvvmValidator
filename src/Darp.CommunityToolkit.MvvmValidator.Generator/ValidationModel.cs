@@ -9,12 +9,12 @@ namespace Darp.MvvmValidator.Generator;
 
 /// <summary> The validation of a type deriving from ValidatingObservableObject </summary>
 /// <param name="Type"> The type </param>
-/// <param name="IsPartial"> Whether the type and all containing types are partial </param>
+/// <param name="CanGenerate"> Whether the type and all containing types are partial and not file-local </param>
 /// <param name="Properties"> The properties declared in this type that have validation attributes </param>
 /// <param name="Diagnostics"> Everything that prevents generating the validation </param>
 internal sealed record TypeValidation(
     INamedTypeSymbol Type,
-    bool IsPartial,
+    bool CanGenerate,
     ImmutableArray<ValidatedProperty> Properties,
     ImmutableArray<Diagnostic> Diagnostics
 );
@@ -40,20 +40,23 @@ internal abstract record PropertyRule;
 /// <summary> Runs a static instance of the validation attribute </summary>
 /// <param name="Attribute"> The attribute </param>
 /// <param name="IsRequired"> Whether a failure stops validating the property </param>
-/// <param name="IsTrimSafe"> Whether the attribute constructor requires unreferenced code that this property never needs </param>
-internal sealed record AttributeRule(AttributeInfo Attribute, bool IsRequired, bool IsTrimSafe) : PropertyRule;
+/// <param name="SuppressTrimWarning">
+/// Whether the IL2026 of the attribute constructor can be suppressed, because this property never reaches the
+/// reflection it warns about
+/// </param>
+internal sealed record AttributeRule(AttributeInfo Attribute, bool IsRequired, bool SuppressTrimWarning) : PropertyRule;
 
 /// <summary> Calls the method of a [CustomValidation] directly instead of looking it up with reflection </summary>
 /// <param name="Method"> The fully qualified method </param>
 /// <param name="PassesContext"> Whether the method takes a ValidationContext </param>
-/// <param name="ErrorMessage"> A C# expression for the message format set on the attribute, or <c>null</c> </param>
+/// <param name="ErrorMessage"> A C# expression for the message format of the attribute, possibly the literal <c>null</c> </param>
 internal sealed record CustomValidationRule(string Method, bool PassesContext, string ErrorMessage) : PropertyRule;
 
 /// <summary> Implements [Compare] by reading the other property directly instead of with reflection </summary>
 /// <param name="OtherProperty"> The name of the compared property </param>
-/// <param name="OtherValue"> The C# expression reading the compared property </param>
+/// <param name="OtherValue"> The C# expression reading the compared property, which can be static </param>
 /// <param name="OtherDisplay"> The [Display] attribute of the compared property, if any </param>
-/// <param name="ErrorMessage"> A C# expression for the message format set on the attribute, or <c>null</c> </param>
+/// <param name="ErrorMessage"> A C# expression for the message format of the attribute, possibly the literal <c>null</c> </param>
 internal sealed record CompareRule(
     string OtherProperty,
     string OtherValue,
@@ -75,41 +78,58 @@ internal static class ValidationModel
         foreach (ISymbol member in type.GetMembers())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ValidatedProperty? property = member switch
+            if (
+                TryGetProperty(member, known, out string? name, out ITypeSymbol? propertyType)
+                && IsReadable(member)
+                && CreateProperty(context, name, propertyType, member) is { } property
+            )
             {
-                // Explicit interface implementations cannot be referenced by name, so they never raise PropertyChanged
-                IPropertySymbol
-                {
-                    IsStatic: false,
-                    IsIndexer: false,
-                    CanBeReferencedByName: true,
-                    GetMethod: not null,
-                } p => CreateProperty(context, p.Name, p.Type, p, IsValidatedByBase(context, p.Name)),
-                IFieldSymbol { IsStatic: false } f when known.IsObservableProperty(f) => CreateProperty(
-                    context,
-                    GetGeneratedPropertyName(f.Name),
-                    f.Type,
-                    f,
-                    isValidatedByBase: false
-                ),
-                _ => null,
-            };
-            if (property is not null)
                 properties.Add(property);
+            }
         }
 
-        bool isPartial = IsPartialHierarchy(type);
-        if (!isPartial && properties.Count > 0)
+        bool canGenerate = CanExtend(type);
+        if (!canGenerate && properties.Count > 0)
         {
             context.Diagnostics.Add(
                 Diagnostic.Create(Diagnostics.TypeMustBePartial, type.Locations.FirstOrDefault(), type.Name)
             );
         }
-        return new TypeValidation(type, isPartial, properties.ToImmutable(), context.Diagnostics.ToImmutable());
+        return new TypeValidation(type, canGenerate, properties.ToImmutable(), context.Diagnostics.ToImmutable());
+    }
+
+    /// <summary> Whether a property or [ObservableProperty] field has validation attributes, including <c>[property: ...]</c> ones </summary>
+    public static bool HasValidationAttributes(ISymbol member, KnownSymbols known, Compilation compilation) =>
+        GetAppliedAttributes(member, compilation)
+            .Any(a => KnownSymbols.InheritsFrom(a.Class, known.ValidationAttribute));
+
+    /// <summary>
+    /// The instance property a member stands for: the property itself, or the property CommunityToolkit.Mvvm
+    /// generates for an [ObservableProperty] field. Explicit interface implementations cannot be referenced by name
+    /// </summary>
+    private static bool TryGetProperty(
+        ISymbol member,
+        KnownSymbols known,
+        [NotNullWhen(true)] out string? name,
+        [NotNullWhen(true)] out ITypeSymbol? type
+    )
+    {
+        switch (member)
+        {
+            case IPropertySymbol { IsStatic: false, IsIndexer: false, CanBeReferencedByName: true } property:
+                (name, type) = (property.Name, property.Type);
+                return true;
+            case IFieldSymbol { IsStatic: false } field when known.IsObservableProperty(field):
+                (name, type) = (GetGeneratedPropertyName(field.Name), field.Type);
+                return true;
+            default:
+                (name, type) = (null, null);
+                return false;
+        }
     }
 
     /// <summary> Mirrors how CommunityToolkit.Mvvm names the property generated for an [ObservableProperty] field </summary>
-    public static string GetGeneratedPropertyName(string fieldName)
+    private static string GetGeneratedPropertyName(string fieldName)
     {
         string name = fieldName;
         if (name.StartsWith("m_", StringComparison.Ordinal))
@@ -119,19 +139,32 @@ internal static class ValidationModel
         return name.Length == 0 ? fieldName : char.ToUpper(name[0], CultureInfo.InvariantCulture) + name.Substring(1);
     }
 
+    /// <summary> The property generated for an [ObservableProperty] field always has a public getter </summary>
+    private static bool IsReadable(ISymbol member) => member is IFieldSymbol or IPropertySymbol { GetMethod: not null };
+
+    /// <summary> Generated code passes values as object and calls validation methods statically </summary>
+    private static bool IsSupportedType(ITypeSymbol type) =>
+        type
+            is not (
+                { IsRefLikeType: true }
+                or ITypeParameterSymbol { AllowsRefLikeType: true }
+                or { TypeKind: TypeKind.Pointer or TypeKind.FunctionPointer or TypeKind.Dynamic }
+            );
+
     private static ValidatedProperty? CreateProperty(
         BuildContext context,
         string name,
         ITypeSymbol propertyType,
-        ISymbol member,
-        bool isValidatedByBase
+        ISymbol member
     )
     {
+        bool isValidatedByBase = IsValidatedByBase(context, name);
+        Location? memberLocation = member.Locations.FirstOrDefault();
         var rules = new List<PropertyRule>();
         AttributeInfo? display = null;
         AttributeRule? required = null;
         var hasValidationAttributes = false;
-        var hasOwnValidationAttributes = false;
+        var hasOwnAttributes = false;
         foreach (AppliedAttribute applied in GetAppliedAttributes(member, context.Compilation))
         {
             bool isDisplay = SymbolEqualityComparer.Default.Equals(applied.Class, context.Known.DisplayAttribute);
@@ -139,22 +172,20 @@ internal static class ValidationModel
             if (!isDisplay && !isValidation)
                 continue;
             hasValidationAttributes |= isValidation;
-            hasOwnValidationAttributes |= isValidation && !applied.IsInherited;
-            AttributeInfo? attribute = null;
-            string error = "the attribute type is not accessible from this assembly";
-            if (
-                !context.Compilation.IsSymbolAccessibleWithin(applied.Class, context.Compilation.Assembly)
-                || !applied.TryRead(out attribute, out error)
-            )
+            hasOwnAttributes |= !applied.IsInherited;
+            Location? location = applied.Location ?? memberLocation;
+            if (!applied.TryRead(out AttributeInfo? attribute, out string error))
             {
-                context.Diagnostics.Add(
-                    Diagnostic.Create(
-                        Diagnostics.UnsupportedAttribute,
-                        applied.Location ?? member.Locations.FirstOrDefault(),
-                        applied.Class.Name,
-                        name,
-                        error
-                    )
+                context.Report(Diagnostics.UnsupportedValidation, location, name, $"[{applied.Class.Name}] {error}");
+                continue;
+            }
+            if (!attribute.ReferencedSymbols.All(s => context.Compilation.IsSymbolAccessibleWithin(s, context.Type)))
+            {
+                context.Report(
+                    Diagnostics.UnsupportedValidation,
+                    location,
+                    name,
+                    $"[{applied.Class.Name}] uses a type or member that is not accessible from '{context.Type.Name}'"
                 );
                 continue;
             }
@@ -164,7 +195,7 @@ internal static class ValidationModel
                 continue;
             }
 
-            PropertyRule? rule = CreateRule(context, name, propertyType, attribute);
+            PropertyRule? rule = CreateRule(context, name, propertyType, attribute, location);
             // Like Validator.TryValidateProperty: the first required attribute runs first and stops validation on failure
             if (
                 rule is AttributeRule attributeRule
@@ -181,10 +212,20 @@ internal static class ValidationModel
         }
         // The generated validation of the base type reads the property virtually, so it covers an override that only
         // inherits its attributes. A property hiding a validated one with 'new' needs its own (possibly empty) rules
-        if (isValidatedByBase && member is IPropertySymbol { IsOverride: true } && !hasOwnValidationAttributes)
+        if (isValidatedByBase && member is IPropertySymbol { IsOverride: true } && !hasOwnAttributes)
             return null;
         if (!hasValidationAttributes && !isValidatedByBase)
             return null;
+        if (!IsSupportedType(propertyType))
+        {
+            context.Report(
+                Diagnostics.UnsupportedValidation,
+                memberLocation,
+                name,
+                $"its type '{propertyType.ToDisplayString()}' is a ref struct, a pointer or dynamic"
+            );
+            return null;
+        }
         if (required is not null)
             rules.Insert(0, required);
         return new ValidatedProperty(
@@ -200,25 +241,19 @@ internal static class ValidationModel
         BuildContext context,
         string propertyName,
         ITypeSymbol propertyType,
-        AttributeInfo attribute
+        AttributeInfo attribute,
+        Location? location
     )
     {
-        bool isCustomValidation = SymbolEqualityComparer.Default.Equals(
-            attribute.Class,
-            context.Known.CustomValidationAttribute
+        if (SymbolEqualityComparer.Default.Equals(attribute.Class, context.Known.CustomValidationAttribute))
+            return CreateCustomValidationRule(context, propertyName, propertyType, attribute, location);
+        if (SymbolEqualityComparer.Default.Equals(attribute.Class, context.Known.CompareAttribute))
+            return CreateCompareRule(context, propertyName, attribute, location);
+        return new AttributeRule(
+            attribute,
+            IsRequired: false,
+            SuppressTrimWarning: context.Known.CanSuppressTrimWarning(attribute.Class, propertyType)
         );
-        bool isCompare = SymbolEqualityComparer.Default.Equals(attribute.Class, context.Known.CompareAttribute);
-        if (!isCustomValidation && !isCompare)
-            return new AttributeRule(
-                attribute,
-                IsRequired: false,
-                IsTrimSafe: context.Known.IsTrimSafeFor(attribute.Class, propertyType)
-            );
-
-        string errorMessage = GetErrorMessage(attribute);
-        return isCustomValidation
-            ? CreateCustomValidationRule(context, propertyName, propertyType, attribute, errorMessage)
-            : CreateCompareRule(context, propertyName, attribute, errorMessage);
     }
 
     /// <summary>
@@ -243,7 +278,7 @@ internal static class ValidationModel
         string propertyName,
         ITypeSymbol propertyType,
         AttributeInfo attribute,
-        string errorMessage
+        Location? location
     )
     {
         var validatorType = attribute.GetValue(0) as INamedTypeSymbol;
@@ -273,23 +308,23 @@ internal static class ValidationModel
                 method.Parameters.Length == 2
                 && !SymbolEqualityComparer.Default.Equals(method.Parameters[1].Type, context.Known.ValidationContext)
             )
+            // The generated call passes arguments by value
+            || !method.Parameters.All(p => p.RefKind is RefKind.None or RefKind.In)
         )
         {
-            context.Diagnostics.Add(
-                Diagnostic.Create(
-                    Diagnostics.InvalidCustomValidationMethod,
-                    attribute.Location,
-                    propertyName,
-                    methodName ?? "?",
-                    validatorType?.Name ?? "?"
-                )
+            context.Report(
+                Diagnostics.InvalidCustomValidationMethod,
+                location,
+                propertyName,
+                methodName ?? "?",
+                validatorType?.Name ?? "?"
             );
             return null;
         }
         return new CustomValidationRule(
             $"{AttributeRenderer.FullName(validatorType)}.{AttributeRenderer.EscapeIdentifier(method.Name)}",
             method.Parameters.Length == 2,
-            errorMessage
+            GetErrorMessage(attribute)
         );
     }
 
@@ -297,21 +332,19 @@ internal static class ValidationModel
         BuildContext context,
         string propertyName,
         AttributeInfo attribute,
-        string errorMessage
+        Location? location
     )
     {
         string? otherProperty = attribute.GetString(0);
-        ISymbol? other = otherProperty is null ? null : FindReadableProperty(context, otherProperty);
+        ISymbol? other = otherProperty is null ? null : FindComparedProperty(context, otherProperty);
         if (otherProperty is null || other is null)
         {
-            context.Diagnostics.Add(
-                Diagnostic.Create(
-                    Diagnostics.InvalidCompareTarget,
-                    attribute.Location,
-                    propertyName,
-                    otherProperty ?? "?",
-                    context.Type.Name
-                )
+            context.Report(
+                Diagnostics.InvalidCompareTarget,
+                location,
+                propertyName,
+                otherProperty ?? "?",
+                context.Type.Name
             );
             return null;
         }
@@ -329,65 +362,67 @@ internal static class ValidationModel
         string otherValue = other.IsStatic
             ? $"{AttributeRenderer.FullName(other.ContainingType)}.{AttributeRenderer.EscapeIdentifier(otherProperty)}"
             : $"this.{AttributeRenderer.EscapeIdentifier(otherProperty)}";
-        return new CompareRule(otherProperty, otherValue, otherDisplay, errorMessage);
+        return new CompareRule(otherProperty, otherValue, otherDisplay, GetErrorMessage(attribute));
     }
 
-    /// <summary> Whether a base type has validation for a property with this name </summary>
+    /// <summary>
+    /// Finds the property <c>{name}</c> means in the view model: the nearest declaration wins, so a hiding member that
+    /// is not a readable, accessible property makes the target invalid
+    /// </summary>
+    private static ISymbol? FindComparedProperty(BuildContext context, string name)
+    {
+        for (INamedTypeSymbol? current = context.Type; current is not null; current = current.BaseType)
+        {
+            ISymbol? member =
+                current.GetMembers(name).FirstOrDefault()
+                ?? current
+                    .GetMembers()
+                    .FirstOrDefault(m =>
+                        m is IFieldSymbol && TryGetProperty(m, context.Known, out string? n, out _) && n == name
+                    );
+            if (member is null)
+                continue;
+            // Like CompareAttribute, which looks the property up with reflection, static properties are allowed
+            ITypeSymbol? type = member switch
+            {
+                IPropertySymbol { IsIndexer: false, CanBeReferencedByName: true } property => property.Type,
+                IFieldSymbol field when TryGetProperty(field, context.Known, out _, out ITypeSymbol? fieldType) =>
+                    fieldType,
+                _ => null,
+            };
+            bool isValid =
+                type is not null
+                && IsReadable(member)
+                && IsSupportedType(type)
+                && (
+                    member is not IPropertySymbol { GetMethod: { } getter }
+                    || context.Compilation.IsSymbolAccessibleWithin(getter, context.Type, context.Type)
+                );
+            return isValid ? member : null;
+        }
+        return null;
+    }
+
+    /// <summary> Whether a base type has generated validation for a property with this name </summary>
     private static bool IsValidatedByBase(BuildContext context, string name)
     {
         for (INamedTypeSymbol? current = context.Type.BaseType; current is not null; current = current.BaseType)
         {
             foreach (ISymbol member in current.GetMembers())
             {
-                bool isSameProperty = member switch
+                if (
+                    TryGetProperty(member, context.Known, out string? memberName, out _)
+                    && memberName == name
+                    && IsReadable(member)
+                    && HasValidationAttributes(member, context.Known, context.Compilation)
+                )
                 {
-                    IPropertySymbol { IsStatic: false } property => property.Name == name,
-                    IFieldSymbol { IsStatic: false } field => context.Known.IsObservableProperty(field)
-                        && GetGeneratedPropertyName(field.Name) == name,
-                    _ => false,
-                };
-                if (isSameProperty && HasValidationAttributes(member, context.Known, context.Compilation))
                     return true;
+                }
             }
         }
         return false;
     }
-
-    /// <summary> Finds a readable property, or the [ObservableProperty] field it is generated from </summary>
-    private static ISymbol? FindReadableProperty(BuildContext context, string name)
-    {
-        for (INamedTypeSymbol? current = context.Type; current is not null; current = current.BaseType)
-        {
-            foreach (ISymbol member in current.GetMembers())
-            {
-                if (
-                    member
-                        is IPropertySymbol
-                        {
-                            IsIndexer: false,
-                            CanBeReferencedByName: true,
-                            GetMethod: not null
-                        } property
-                    && property.Name == name
-                )
-                    return property;
-                if (
-                    member is IFieldSymbol field
-                    && context.Known.IsObservableProperty(field)
-                    && GetGeneratedPropertyName(field.Name) == name
-                )
-                {
-                    return field;
-                }
-            }
-        }
-        return null;
-    }
-
-    /// <summary> Whether a property or [ObservableProperty] field has validation attributes, including <c>[property: ...]</c> ones </summary>
-    public static bool HasValidationAttributes(ISymbol member, KnownSymbols known, Compilation compilation) =>
-        GetAppliedAttributes(member, compilation)
-            .Any(a => KnownSymbols.InheritsFrom(a.Class, known.ValidationAttribute));
 
     /// <summary>
     /// The attributes of a member, as <c>Validator.TryValidateProperty</c> sees them. An override also gets the
@@ -467,12 +502,14 @@ internal static class ValidationModel
         }
     }
 
-    private static bool IsPartialHierarchy(INamedTypeSymbol type)
+    /// <summary> Generated code adds a partial declaration in another file, which file-local types do not allow </summary>
+    private static bool CanExtend(INamedTypeSymbol type)
     {
         for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
         {
             if (
-                !current.DeclaringSyntaxReferences.All(r =>
+                current.IsFileLocal
+                || !current.DeclaringSyntaxReferences.All(r =>
                     r.GetSyntax() is TypeDeclarationSyntax declaration
                     && declaration.Modifiers.Any(SyntaxKind.PartialKeyword)
                 )
@@ -490,6 +527,9 @@ internal static class ValidationModel
         public KnownSymbols Known { get; } = known;
         public Compilation Compilation { get; } = compilation;
         public ImmutableArray<Diagnostic>.Builder Diagnostics { get; } = ImmutableArray.CreateBuilder<Diagnostic>();
+
+        public void Report(DiagnosticDescriptor descriptor, Location? location, params object[] arguments) =>
+            Diagnostics.Add(Diagnostic.Create(descriptor, location, arguments));
     }
 
     private delegate bool AttributeReader([NotNullWhen(true)] out AttributeInfo? attribute, out string error);

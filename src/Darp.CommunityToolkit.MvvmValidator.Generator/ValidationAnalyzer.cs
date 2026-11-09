@@ -18,14 +18,12 @@ public sealed class ValidationAnalyzer : DiagnosticAnalyzer
         Diagnostics.InvalidCustomValidationMethod,
         Diagnostics.MissingValidationBase,
         Diagnostics.InvalidCompareTarget,
-        Diagnostics.UnsupportedAttribute,
+        Diagnostics.UnsupportedValidation,
     ];
 
     /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
-        if (context is null)
-            throw new ArgumentNullException(nameof(context));
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
         context.RegisterCompilationStartAction(static compilationContext =>

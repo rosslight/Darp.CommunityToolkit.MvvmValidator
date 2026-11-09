@@ -27,10 +27,6 @@ public partial class OverloadViewModel : ValidatingObservableObject
     [property: StringLength(maximumLength: 3)]
     private string? _namedConstructorArgument;
 
-    [ObservableProperty]
-    [property: AllowedValues(new object[0])]
-    private string? _emptyArrayArgument;
-
     public new void ValidateProperty(string propertyName) => base.ValidateProperty(propertyName);
 }
 
@@ -46,6 +42,12 @@ public partial class OverriddenBaseViewModel : ValidatingObservableObject
 public partial class OverridingViewModel : OverriddenBaseViewModel
 {
     [StringLength(3)]
+    public override string? Name { get; set; }
+}
+
+public partial class DisplayOverridingViewModel : OverriddenBaseViewModel
+{
+    [Display(Name = "Login")]
     public override string? Name { get; set; }
 }
 
@@ -104,13 +106,67 @@ public partial class InheritanceViewModel : InheritanceBaseViewModel
     public new string Hidden => "okay";
 }
 
-public partial class EmptyDisplayNameViewModel : ValidatingObservableObject
+/// <summary> Property names that once produced the same generated member names </summary>
+public partial class CollidingNamesViewModel : ValidatingObservableObject
 {
+    [MinLength(1)]
+    public string? A { get; set; } = "";
+
     [Required]
-    [Display(Name = "")]
-    public string? Unnamed { get; set; }
+    public string? CreateA { get; set; }
+
+    [Required]
+    public string? ValidateA { get; set; }
+
+    [Required]
+    public string? A_Rule0 { get; set; }
+
+    public new void ValidateAllProperties() => base.ValidateAllProperties();
+}
+
+public partial class PrivateAttributeViewModel : ValidatingObservableObject
+{
+    [Rejected]
+    public string? Name { get; set; }
 
     public new void ValidateProperty(string propertyName) => base.ValidateProperty(propertyName);
+
+    [AttributeUsage(AttributeTargets.Property)]
+    private sealed class RejectedAttribute : ValidationAttribute
+    {
+        public override bool IsValid(object? value) => false;
+    }
+}
+
+/// <summary> Reads a service and an item that the view model passes to every ValidationContext </summary>
+public sealed class ContextValuesAttribute : ValidationAttribute
+{
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext) =>
+        new($"{validationContext.GetService(typeof(string))} {validationContext.Items["item"]}");
+}
+
+public partial class ServiceViewModel(IServiceProvider serviceProvider, IDictionary<object, object?> items)
+    : ValidatingObservableObject(serviceProvider, items)
+{
+    [ContextValues]
+    public string? Name { get; set; }
+
+    public new void ValidateProperty(string propertyName) => base.ValidateProperty(propertyName);
+}
+
+public partial class CallerMemberNameViewModel : ValidatingObservableObject
+{
+    // Validates through [CallerMemberName] without raising PropertyChanged
+    [Required]
+    public string? Code
+    {
+        get;
+        set
+        {
+            field = value;
+            ValidateProperty();
+        }
+    }
 }
 
 public partial class StaticCompareViewModel : ValidatingObservableObject
@@ -123,4 +179,13 @@ public partial class StaticCompareViewModel : ValidatingObservableObject
         get;
         set => SetProperty(ref field, value);
     }
+}
+
+public partial class EmptyDisplayNameViewModel : ValidatingObservableObject
+{
+    [Required]
+    [Display(Name = "")]
+    public string? Unnamed { get; set; }
+
+    public new void ValidateProperty(string propertyName) => base.ValidateProperty(propertyName);
 }

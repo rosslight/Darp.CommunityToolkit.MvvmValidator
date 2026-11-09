@@ -55,7 +55,9 @@ public partial class SignUpViewModel : ValidatingObservableObject
   then all other attributes run.
 - `ValidateAllProperties()` validates the current values, for example from the constructor.
 - `SetErrors(propertyName, errors)` publishes results from asynchronous or server-side validation.
-  The next validation of that property replaces them.
+  The next validation of that property replaces them. `ErrorsChanged` is only raised when the messages change.
+- `ClearErrors()` removes all errors, `ClearErrors(propertyName)` those of one property. Both forget that the
+  properties were validated, so a reset form stays free of errors until its properties change again.
 - `[CustomValidation]` calls the method directly, and `[Compare]` reads the other property directly.
   Both work without reflection.
 - Messages and display names can come from resources (`ErrorMessageResourceType`/`ErrorMessageResourceName`,
@@ -67,9 +69,10 @@ public partial class SignUpViewModel : ValidatingObservableObject
 ## Requirements
 
 - .NET 10. Older frameworks don't have a trim-safe `ValidationContext` constructor.
-- Types deriving from `ValidatingObservableObject` and their containing types must be `partial`.
+- Types that declare validated properties, and their containing types, must be `partial` and must not be file-local.
 - Attributes that can only target properties, like `[Compare]`, need the `property:` target on `[ObservableProperty]`
   fields: `[property: Compare(nameof(Password))]`.
+- Generated members start with `__dmv_`. Don't declare members with that prefix in view models.
 
 ## Diagnostics
 
@@ -77,11 +80,11 @@ The package turns off the toolkit's MVVMTK0006, which only accepts `ObservableVa
 
 | Id | Meaning |
 | --- | --- |
-| DMV0001 | A validated type or one of its containing types is not partial |
-| DMV0002 | `[CustomValidation]` doesn't reference a single public static method with a matching signature |
+| DMV0001 | A validated type or one of its containing types is not partial, or is file-local |
+| DMV0002 | `[CustomValidation]` doesn't reference a single public static method with a matching signature that takes its arguments by value or `in` |
 | DMV0003 | An `[ObservableProperty]` member has validation attributes, but its type inherits neither `ValidatingObservableObject` nor `ObservableValidator` |
-| DMV0004 | `[Compare]` references a member that isn't a readable property |
-| DMV0005 | An attribute argument can't be reproduced in generated code |
+| DMV0004 | `[Compare]` references a member that isn't a readable, accessible property |
+| DMV0005 | Validation of a property can't be generated: an attribute argument isn't a constant, an attribute uses a type that isn't accessible from the view model, or the property is a ref struct, a pointer or `dynamic` |
 
 The trim analyzer reports IL2026 where `[Compare]`, `[MinLength]`, `[MaxLength]` or `[Length]` is applied.
 The package suppresses these warnings when the generated code never reaches the reflection they warn about.

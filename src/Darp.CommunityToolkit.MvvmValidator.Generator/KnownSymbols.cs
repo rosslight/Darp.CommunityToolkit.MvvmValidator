@@ -64,19 +64,18 @@ internal sealed class KnownSymbols
     public bool IsValidatingObservableObject(INamedTypeSymbol type) =>
         InheritsFrom(type.BaseType, ValidatingObservableObject);
 
-    public bool IsValidationAttribute(AttributeData attribute) =>
-        InheritsFrom(attribute.AttributeClass, ValidationAttribute);
-
     public bool IsObservableProperty(ISymbol member) =>
         member
             .GetAttributes()
             .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, ObservablePropertyAttribute));
 
     /// <summary>
-    /// Whether the generated code never makes <paramref name="attributeClass"/> use reflection for a value of <paramref name="propertyType"/>.
-    /// [Compare] is implemented without the attribute. Length attributes only reflect on values that are neither strings nor collections.
+    /// Whether the IL2026 of the <paramref name="attributeClass"/> constructor can be suppressed for a property of
+    /// <paramref name="propertyType"/>, because the generated code never reaches the reflection it warns about.
+    /// [Compare] is implemented without the attribute. Length attributes only reflect on values that are neither
+    /// strings nor collections.
     /// </summary>
-    public bool IsTrimSafeFor(INamedTypeSymbol attributeClass, ITypeSymbol propertyType)
+    public bool CanSuppressTrimWarning(INamedTypeSymbol attributeClass, ITypeSymbol propertyType)
     {
         if (SymbolEqualityComparer.Default.Equals(attributeClass, CompareAttribute))
             return true;
