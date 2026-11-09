@@ -28,8 +28,8 @@ A validated property whose rules read another property, e.g. the property with `
 property validates it again, if it was validated before.
 
 **Generated validation**:
-The partial class part the generator writes for a view model: one static field per rule and overrides of the hooks of
-`ValidatingObservableObject`.
+The partial class part the generator writes for a view model: a static field per attribute rule and per `[Display]`, a
+validation method per validated property, and overrides of the hooks of `ValidatingObservableObject`.
 _Avoid_: Validator (it means the reflection-based `System.ComponentModel.DataAnnotations.Validator`)
 
 ## Relationships

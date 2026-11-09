@@ -1,10 +1,14 @@
 using System.CodeDom.Compiler;
+using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
 namespace Darp.MvvmValidator.Generator;
 
-/// <summary> Writes the partial type with the validation overrides </summary>
+/// <summary>
+/// Writes the partial type with the validation overrides. Generated member names start with <c>__dmv_</c> and are
+/// numbered instead of derived from property names, so they cannot collide with each other
+/// </summary>
 internal static class ValidationSourceWriter
 {
     private const string ValidationResult = "global::System.ComponentModel.DataAnnotations.ValidationResult";
@@ -63,24 +67,29 @@ internal static class ValidationSourceWriter
 
     private static void WriteMembers(IndentedTextWriter writer, TypeValidation validation)
     {
-        var displays = new Dictionary<string, AttributeInfo>(StringComparer.Ordinal);
-        foreach (ValidatedProperty property in validation.Properties)
+        ImmutableArray<ValidatedProperty> properties = validation.Properties;
+        // Display attributes of validated properties and of compared properties, by property name
+        var displayFields = new Dictionary<string, string>(StringComparer.Ordinal);
+        void AddDisplay(string propertyName, AttributeInfo display)
         {
-            for (var i = 0; i < property.Rules.Length; i++)
-            {
-                if (property.Rules[i] is AttributeRule rule)
-                    WriteRuleField(writer, property.Name, i, rule);
-                if (property.Rules[i] is CompareRule { OtherDisplay: { } otherDisplay } compare)
-                    displays[compare.OtherProperty] = otherDisplay;
-            }
-            if (property.Display is not null)
-                displays[property.Name] = property.Display;
+            if (displayFields.ContainsKey(propertyName))
+                return;
+            string field = $"__dmv_display{displayFields.Count}";
+            displayFields.Add(propertyName, field);
+            writer.WriteLine($"private static readonly {Display} {field} = {display.CreationExpression};");
         }
-        foreach (KeyValuePair<string, AttributeInfo> display in displays)
+
+        for (var p = 0; p < properties.Length; p++)
         {
-            writer.WriteLine(
-                $"private static readonly {Display} {GetDisplayField(display.Key)} = {display.Value.CreationExpression};"
-            );
+            for (var r = 0; r < properties[p].Rules.Length; r++)
+            {
+                if (properties[p].Rules[r] is AttributeRule rule)
+                    WriteRuleField(writer, properties[p].Name, GetRuleField(p, r), rule);
+                if (properties[p].Rules[r] is CompareRule { OtherDisplay: { } otherDisplay } compare)
+                    AddDisplay(compare.OtherProperty, otherDisplay);
+            }
+            if (properties[p].Display is { } display)
+                AddDisplay(properties[p].Name, display);
         }
         writer.WriteLineNoTabs("");
 
@@ -94,13 +103,12 @@ internal static class ValidationSourceWriter
         writer.WriteLine("switch (propertyName)");
         writer.WriteLine("{");
         writer.Indent++;
-        foreach (ValidatedProperty property in validation.Properties)
+        for (var p = 0; p < properties.Length; p++)
         {
-            writer.WriteLine($"case {AttributeRenderer.StringLiteral(property.Name)}:");
+            writer.WriteLine($"case {AttributeRenderer.StringLiteral(properties[p].Name)}:");
             writer.Indent++;
-            // The current value is read here, so the validation method can also check a value before it is stored
             writer.WriteLine(
-                $"{GetValidateMethod(property.Name)}(this.{AttributeRenderer.EscapeIdentifier(property.Name)}, errors);"
+                $"{GetValidateMethod(p)}(this.{AttributeRenderer.EscapeIdentifier(properties[p].Name)}, errors);"
             );
             writer.WriteLine("return true;");
             writer.Indent--;
@@ -121,28 +129,30 @@ internal static class ValidationSourceWriter
         writer.WriteLine("{");
         writer.Indent++;
         writer.WriteLine("base.ValidateAllPropertiesCore();");
-        foreach (ValidatedProperty property in validation.Properties.Where(p => !p.IsValidatedByBase))
+        foreach (ValidatedProperty property in properties.Where(p => !p.IsValidatedByBase))
             writer.WriteLine($"ValidateProperty({AttributeRenderer.StringLiteral(property.Name)});");
         writer.Indent--;
         writer.WriteLine("}");
 
-        WriteValidateDependentProperties(writer, validation);
+        WriteValidateDependentProperties(writer, properties);
 
-        foreach (ValidatedProperty property in validation.Properties)
+        for (var p = 0; p < properties.Length; p++)
         {
             writer.WriteLineNoTabs("");
-            WriteValidateMethod(writer, property, displays);
+            WriteValidateMethod(writer, properties[p], p, displayFields);
         }
     }
 
     /// <summary> A [Compare] makes its property depend on the compared one, so a change there validates it again </summary>
-    private static void WriteValidateDependentProperties(IndentedTextWriter writer, TypeValidation validation)
+    private static void WriteValidateDependentProperties(
+        IndentedTextWriter writer,
+        ImmutableArray<ValidatedProperty> properties
+    )
     {
-        var dependents = validation
-            .Properties.SelectMany(property =>
+        var dependents = properties
+            .SelectMany(property =>
                 property.Rules.OfType<CompareRule>().Select(compare => (compare.OtherProperty, property.Name))
             )
-            .Distinct()
             .GroupBy(pair => pair.OtherProperty, pair => pair.Name, StringComparer.Ordinal)
             .ToList();
         if (dependents.Count == 0)
@@ -173,16 +183,15 @@ internal static class ValidationSourceWriter
         writer.WriteLine("}");
     }
 
-    private static void WriteRuleField(IndentedTextWriter writer, string propertyName, int index, AttributeRule rule)
+    private static void WriteRuleField(IndentedTextWriter writer, string propertyName, string field, AttributeRule rule)
     {
         string type = AttributeRenderer.FullName(rule.Attribute.Class);
-        string field = GetRuleField(propertyName, index);
-        if (!rule.IsTrimSafe)
+        if (!rule.SuppressTrimWarning)
         {
             writer.WriteLine($"private static readonly {type} {field} = {rule.Attribute.CreationExpression};");
             return;
         }
-        string factory = $"__Create{propertyName}_Rule{index}";
+        string factory = $"{field}_create";
         writer.WriteLine($"private static readonly {type} {field} = {factory}();");
         writer.WriteLine(
             $"[global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(\"Trimming\", \"IL2026\", Justification = \"{propertyName} is a string or collection, so the attribute does not reflect on a Count property\")]"
@@ -193,12 +202,12 @@ internal static class ValidationSourceWriter
     private static void WriteValidateMethod(
         IndentedTextWriter writer,
         ValidatedProperty property,
-        Dictionary<string, AttributeInfo> displays
+        int index,
+        Dictionary<string, string> displayFields
     )
     {
-        const string value = "value";
         writer.WriteLine(
-            $"private void {GetValidateMethod(property.Name)}({property.TypeName} value, global::System.Collections.Generic.ICollection<{ValidationResult}> errors)"
+            $"private void {GetValidateMethod(index)}({property.TypeName} value, global::System.Collections.Generic.ICollection<{ValidationResult}> errors)"
         );
         writer.WriteLine("{");
         // A property hiding a validated base property with 'new' can have no rules at all
@@ -208,27 +217,30 @@ internal static class ValidationSourceWriter
             return;
         }
         writer.Indent++;
+        string displayName = displayFields.TryGetValue(property.Name, out string? displayField)
+            ? $"{displayField}.GetName()"
+            : "null";
         writer.WriteLine(
-            $"global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext({AttributeRenderer.StringLiteral(property.Name)}, {GetDisplayName(property.Name, displays)});"
+            $"global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext({AttributeRenderer.StringLiteral(property.Name)}, {displayName});"
         );
         writer.WriteLine($"{ValidationResult}? result;");
-        for (var i = 0; i < property.Rules.Length; i++)
+        for (var r = 0; r < property.Rules.Length; r++)
         {
-            string expression = property.Rules[i] switch
+            string expression = property.Rules[r] switch
             {
-                AttributeRule => $"{GetRuleField(property.Name, i)}.GetValidationResult({value}, context)",
+                AttributeRule => $"{GetRuleField(index, r)}.GetValidationResult(value, context)",
                 CustomValidationRule custom =>
-                    $"CompleteCustomValidationResult({custom.Method}({value}{(custom.PassesContext ? ", context" : "")}), {custom.ErrorMessage}, context)",
+                    $"CompleteCustomValidationResult({custom.Method}(value{(custom.PassesContext ? ", context" : "")}), {custom.ErrorMessage}, context)",
                 CompareRule compare =>
-                    $"ValidateCompare({value}, {compare.OtherValue}, {GetDisplayName(compare.OtherProperty, displays)}, {compare.ErrorMessage}, context)",
-                _ => throw new InvalidOperationException($"Unknown rule {property.Rules[i]}"),
+                    $"ValidateCompare(value, this.{AttributeRenderer.EscapeIdentifier(compare.OtherProperty)}, {GetOtherDisplayName(compare.OtherProperty, displayFields)}, {compare.ErrorMessage}, context)",
+                _ => throw new InvalidOperationException($"Unknown rule {property.Rules[r]}"),
             };
             writer.WriteLine($"result = {expression};");
             writer.WriteLine("if (result is not null)");
             writer.WriteLine("{");
             writer.Indent++;
             writer.WriteLine("errors.Add(result);");
-            if (property.Rules[i] is AttributeRule { IsRequired: true })
+            if (property.Rules[r] is AttributeRule { IsRequired: true })
                 writer.WriteLine("return;");
             writer.Indent--;
             writer.WriteLine("}");
@@ -237,16 +249,14 @@ internal static class ValidationSourceWriter
         writer.WriteLine("}");
     }
 
-    private static string GetDisplayName(string propertyName, Dictionary<string, AttributeInfo> displays) =>
-        displays.ContainsKey(propertyName)
-            ? $"{GetDisplayField(propertyName)}.GetName() ?? {AttributeRenderer.StringLiteral(propertyName)}"
+    private static string GetOtherDisplayName(string propertyName, Dictionary<string, string> displayFields) =>
+        displayFields.TryGetValue(propertyName, out string? field)
+            ? $"{field}.GetName() ?? {AttributeRenderer.StringLiteral(propertyName)}"
             : AttributeRenderer.StringLiteral(propertyName);
 
-    private static string GetRuleField(string propertyName, int index) => $"__{propertyName}_Rule{index}";
+    private static string GetRuleField(int property, int rule) => $"__dmv_rule{property}_{rule}";
 
-    private static string GetDisplayField(string propertyName) => $"__{propertyName}_Display";
-
-    private static string GetValidateMethod(string propertyName) => $"__Validate{propertyName}";
+    private static string GetValidateMethod(int property) => $"__dmv_validate{property}";
 
     private static string GetKeyword(INamedTypeSymbol type) =>
         type switch

@@ -13,14 +13,28 @@ namespace Darp.MvvmValidator.Generator;
 /// <param name="Expression"> The C# expression </param>
 /// <param name="Value"> The constant value, if any </param>
 /// <param name="Type"> The type of <paramref name="Expression"/>, if known </param>
-internal sealed record AttributeArgument(string Expression, object? Value, ITypeSymbol? Type = null);
+/// <param name="References"> Every type <paramref name="Expression"/> names </param>
+internal sealed record AttributeArgument(
+    string Expression,
+    object? Value,
+    ITypeSymbol? Type,
+    ImmutableArray<ITypeSymbol> References
+)
+{
+    public static AttributeArgument Create(
+        string expression,
+        object? value,
+        ITypeSymbol? type,
+        params ITypeSymbol?[] references
+    ) => new(expression, value, type, references.OfType<ITypeSymbol>().ToImmutableArray());
+}
 
 /// <summary> An applied attribute that can be turned back into C# code creating an equal instance </summary>
 internal sealed record AttributeInfo(
     INamedTypeSymbol Class,
+    IMethodSymbol Constructor,
     ImmutableArray<AttributeArgument> Arguments,
-    ImmutableArray<KeyValuePair<string, AttributeArgument>> NamedArguments,
-    Location? Location
+    ImmutableArray<KeyValuePair<string, AttributeArgument>> NamedArguments
 )
 {
     /// <summary> <c>new Attribute(args) { Named = value }</c> </summary>
@@ -51,11 +65,15 @@ internal sealed record AttributeInfo(
         }
     }
 
+    /// <summary> The symbols <see cref="CreationExpression"/> uses, which must be accessible from the generated code </summary>
+    public IEnumerable<ISymbol> ReferencedSymbols =>
+        new ISymbol[] { Class, Constructor }
+            .Concat(Arguments.SelectMany(a => a.References))
+            .Concat(NamedArguments.SelectMany(a => a.Value.References));
+
     public string? GetString(int index) => index < Arguments.Length ? Arguments[index].Value as string : null;
 
     public object? GetValue(int index) => index < Arguments.Length ? Arguments[index].Value : null;
-
-    public bool HasNamedArgument(string name) => NamedArguments.Any(a => a.Key == name);
 
     public string? GetNamedString(string name) =>
         NamedArguments.FirstOrDefault(a => a.Key == name).Value?.Value as string;
@@ -129,9 +147,9 @@ internal static class AttributeRenderer
         }
         info = new AttributeInfo(
             attribute.AttributeClass,
+            attribute.AttributeConstructor,
             arguments.ToImmutable(),
-            namedArguments.ToImmutable(),
-            attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation()
+            namedArguments.ToImmutable()
         );
         error = "";
         return true;
@@ -195,9 +213,9 @@ internal static class AttributeRenderer
 
         info = new AttributeInfo(
             attributeClass,
+            constructor,
             arguments.ToImmutableArray(),
-            namedArguments.ToImmutable(),
-            syntax.GetLocation()
+            namedArguments.ToImmutable()
         );
         error = "";
         return true;
@@ -210,15 +228,17 @@ internal static class AttributeRenderer
             {
                 Expression = $"(({FullName(type)})({argument.Expression}))",
                 Type = type,
+                References = argument.References.Add(type),
             };
 
     private static AttributeArgument? FromOperation(IOperation operation)
     {
         if (operation.ConstantValue.HasValue)
         {
-            return new AttributeArgument(
+            return AttributeArgument.Create(
                 RenderConstant(operation.ConstantValue.Value, operation.Type),
                 operation.ConstantValue.Value,
+                operation.Type,
                 operation.Type
             );
         }
@@ -227,33 +247,36 @@ internal static class AttributeRenderer
             case IConversionOperation { Type: { } type } conversion:
                 return FromOperation(conversion.Operand) is { } operand ? Cast(operand, type) : null;
             case ITypeOfOperation typeOf:
-                return new AttributeArgument($"typeof({FullName(typeOf.TypeOperand)})", typeOf.TypeOperand);
+                return AttributeArgument.Create(
+                    $"typeof({FullName(typeOf.TypeOperand)})",
+                    typeOf.TypeOperand,
+                    null,
+                    typeOf.TypeOperand
+                );
             case IArrayCreationOperation { Initializer: { } initializer, Type: IArrayTypeSymbol arrayType }:
-                return FromElements(arrayType, initializer.ElementValues);
-            case IArrayCreationOperation
-            {
-                Initializer: null,
-                Type: IArrayTypeSymbol { Rank: 1 } arrayType,
-                DimensionSizes: [{ ConstantValue: { HasValue: true, Value: int length } }],
-            }:
-                return new AttributeArgument($"new {FullName(arrayType.ElementType)}[{length}]", null);
+                return FromElements(arrayType, initializer.ElementValues.Select(FromOperation));
             case ICollectionExpressionOperation { Type: IArrayTypeSymbol arrayType } collection:
-                return FromElements(arrayType, collection.Elements);
+                return FromElements(arrayType, collection.Elements.Select(FromOperation));
             default:
                 return FromNameof(operation.Syntax as ExpressionSyntax);
         }
     }
 
-    private static AttributeArgument? FromElements(IArrayTypeSymbol arrayType, ImmutableArray<IOperation> elements)
+    private static AttributeArgument? FromElements(IArrayTypeSymbol arrayType, IEnumerable<AttributeArgument?> elements)
     {
-        var values = new List<string>();
-        foreach (IOperation element in elements)
+        var values = new List<AttributeArgument>();
+        foreach (AttributeArgument? element in elements)
         {
-            if (FromOperation(element) is not { } value)
+            if (element is null)
                 return null;
-            values.Add(value.Expression);
+            values.Add(element);
         }
-        return new AttributeArgument($"new {FullName(arrayType)} {{ {string.Join(", ", values)} }}", null, arrayType);
+        return new AttributeArgument(
+            $"new {FullName(arrayType)} {{ {string.Join(", ", values.Select(v => v.Expression))} }}",
+            null,
+            arrayType,
+            values.SelectMany(v => v.References).Prepend(arrayType).ToImmutableArray()
+        );
     }
 
     private static AttributeArgument? FromTypedConstant(TypedConstant constant)
@@ -261,29 +284,19 @@ internal static class AttributeRenderer
         switch (constant.Kind)
         {
             case TypedConstantKind.Array:
-                if (constant.IsNull || constant.Type is null)
-                    return new AttributeArgument("null", null);
-                var elements = new List<string>();
-                foreach (TypedConstant element in constant.Values)
-                {
-                    if (FromTypedConstant(element) is not { } elementArgument)
-                        return null;
-                    elements.Add(elementArgument.Expression);
-                }
-                return new AttributeArgument(
-                    $"new {FullName(constant.Type)} {{ {string.Join(", ", elements)} }}",
-                    null,
-                    constant.Type
-                );
+                return constant.IsNull || constant.Type is not IArrayTypeSymbol arrayType
+                    ? AttributeArgument.Create("null", null, null)
+                    : FromElements(arrayType, constant.Values.Select(FromTypedConstant));
             case TypedConstantKind.Type:
                 return constant.Value is ITypeSymbol type
-                    ? new AttributeArgument($"typeof({FullName(type)})", type)
-                    : new AttributeArgument("null", null);
+                    ? AttributeArgument.Create($"typeof({FullName(type)})", type, null, type)
+                    : AttributeArgument.Create("null", null, null);
             case TypedConstantKind.Enum:
             case TypedConstantKind.Primitive:
-                return new AttributeArgument(
+                return AttributeArgument.Create(
                     RenderConstant(constant.Value, constant.Type),
                     constant.Value,
+                    constant.Type,
                     constant.Type
                 );
             default:
@@ -311,7 +324,7 @@ internal static class AttributeRenderer
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
             _ => null,
         };
-        return name is null ? null : new AttributeArgument(StringLiteral(name), name);
+        return name is null ? null : AttributeArgument.Create(StringLiteral(name), name, null);
     }
 
     private static ExpressionSyntax? GetPositionalSyntax(AttributeData attribute, int index)

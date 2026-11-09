@@ -5,13 +5,13 @@ namespace Sample
 {
     partial class SignUpViewModel
     {
-        private static readonly global::System.ComponentModel.DataAnnotations.RequiredAttribute __UserName_Rule0 = new global::System.ComponentModel.DataAnnotations.RequiredAttribute();
-        private static readonly global::System.ComponentModel.DataAnnotations.StringLengthAttribute __UserName_Rule1 = new global::System.ComponentModel.DataAnnotations.StringLengthAttribute(((int)(20))) { MinimumLength = ((int)(3)) };
-        private static readonly global::System.ComponentModel.DataAnnotations.RequiredAttribute __Password_Rule0 = new global::System.ComponentModel.DataAnnotations.RequiredAttribute();
-        private static readonly global::System.ComponentModel.DataAnnotations.MinLengthAttribute __Password_Rule1 = __CreatePassword_Rule1();
+        private static readonly global::System.ComponentModel.DataAnnotations.RequiredAttribute __dmv_rule0_0 = new global::System.ComponentModel.DataAnnotations.RequiredAttribute();
+        private static readonly global::System.ComponentModel.DataAnnotations.StringLengthAttribute __dmv_rule0_1 = new global::System.ComponentModel.DataAnnotations.StringLengthAttribute(((int)(20))) { MinimumLength = ((int)(3)) };
+        private static readonly global::System.ComponentModel.DataAnnotations.DisplayAttribute __dmv_display0 = new global::System.ComponentModel.DataAnnotations.DisplayAttribute() { Name = "User name" };
+        private static readonly global::System.ComponentModel.DataAnnotations.RequiredAttribute __dmv_rule1_0 = new global::System.ComponentModel.DataAnnotations.RequiredAttribute();
+        private static readonly global::System.ComponentModel.DataAnnotations.MinLengthAttribute __dmv_rule1_1 = __dmv_rule1_1_create();
         [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Password is a string or collection, so the attribute does not reflect on a Count property")]
-        private static global::System.ComponentModel.DataAnnotations.MinLengthAttribute __CreatePassword_Rule1() => new global::System.ComponentModel.DataAnnotations.MinLengthAttribute(((int)(8)));
-        private static readonly global::System.ComponentModel.DataAnnotations.DisplayAttribute __UserName_Display = new global::System.ComponentModel.DataAnnotations.DisplayAttribute() { Name = "User name" };
+        private static global::System.ComponentModel.DataAnnotations.MinLengthAttribute __dmv_rule1_1_create() => new global::System.ComponentModel.DataAnnotations.MinLengthAttribute(((int)(8)));
 
         /// <inheritdoc />
         [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
@@ -20,16 +20,16 @@ namespace Sample
             switch (propertyName)
             {
                 case "UserName":
-                    __ValidateUserName(this.UserName, errors);
+                    __dmv_validate0(this.UserName, errors);
                     return true;
                 case "Password":
-                    __ValidatePassword(this.Password, errors);
+                    __dmv_validate1(this.Password, errors);
                     return true;
                 case "ConfirmPassword":
-                    __ValidateConfirmPassword(this.ConfirmPassword, errors);
+                    __dmv_validate2(this.ConfirmPassword, errors);
                     return true;
                 case "InviteCode":
-                    __ValidateInviteCode(this.InviteCode, errors);
+                    __dmv_validate3(this.InviteCode, errors);
                     return true;
                 default:
                     return base.TryValidatePropertyCore(propertyName, errors);
@@ -60,43 +60,43 @@ namespace Sample
             base.ValidateDependentPropertiesCore(propertyName);
         }
 
-        private void __ValidateUserName(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+        private void __dmv_validate0(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
         {
-            global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("UserName", __UserName_Display.GetName() ?? "UserName");
+            global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("UserName", __dmv_display0.GetName());
             global::System.ComponentModel.DataAnnotations.ValidationResult? result;
-            result = __UserName_Rule0.GetValidationResult(value, context);
+            result = __dmv_rule0_0.GetValidationResult(value, context);
             if (result is not null)
             {
                 errors.Add(result);
                 return;
             }
-            result = __UserName_Rule1.GetValidationResult(value, context);
+            result = __dmv_rule0_1.GetValidationResult(value, context);
             if (result is not null)
             {
                 errors.Add(result);
             }
         }
 
-        private void __ValidatePassword(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+        private void __dmv_validate1(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
         {
-            global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("Password", "Password");
+            global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("Password", null);
             global::System.ComponentModel.DataAnnotations.ValidationResult? result;
-            result = __Password_Rule0.GetValidationResult(value, context);
+            result = __dmv_rule1_0.GetValidationResult(value, context);
             if (result is not null)
             {
                 errors.Add(result);
                 return;
             }
-            result = __Password_Rule1.GetValidationResult(value, context);
+            result = __dmv_rule1_1.GetValidationResult(value, context);
             if (result is not null)
             {
                 errors.Add(result);
             }
         }
 
-        private void __ValidateConfirmPassword(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+        private void __dmv_validate2(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
         {
-            global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("ConfirmPassword", "ConfirmPassword");
+            global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("ConfirmPassword", null);
             global::System.ComponentModel.DataAnnotations.ValidationResult? result;
             result = ValidateCompare(value, this.Password, "Password", null, context);
             if (result is not null)
@@ -105,9 +105,9 @@ namespace Sample
             }
         }
 
-        private void __ValidateInviteCode(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
+        private void __dmv_validate3(string? value, global::System.Collections.Generic.ICollection<global::System.ComponentModel.DataAnnotations.ValidationResult> errors)
         {
-            global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("InviteCode", "InviteCode");
+            global::System.ComponentModel.DataAnnotations.ValidationContext context = CreateValidationContext("InviteCode", null);
             global::System.ComponentModel.DataAnnotations.ValidationResult? result;
             result = CompleteCustomValidationResult(global::Sample.SignUpViewModel.ValidateInvite(value, context), null, context);
             if (result is not null)

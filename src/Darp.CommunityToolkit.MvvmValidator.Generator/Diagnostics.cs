@@ -9,7 +9,7 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor TypeMustBePartial = new(
         "DMV0001",
         "Validated type must be partial",
-        "'{0}' has properties with validation attributes, so it and all its containing types must be partial",
+        "'{0}' has properties with validation attributes, so it and all its containing types must be partial and must not be file-local",
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -18,7 +18,7 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor InvalidCustomValidationMethod = new(
         "DMV0002",
         "Invalid CustomValidation method",
-        "[CustomValidation] on '{0}' must reference a single public static method '{1}' on '{2}' that returns ValidationResult and takes the value, optionally followed by a ValidationContext",
+        "[CustomValidation] on '{0}' must reference a single public static method '{1}' on '{2}' that returns ValidationResult and takes the value, optionally followed by a ValidationContext, both by value or 'in'",
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -36,16 +36,16 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor InvalidCompareTarget = new(
         "DMV0004",
         "Invalid Compare target",
-        "[Compare] on '{0}' references '{1}', which is not a readable property of '{2}'",
+        "[Compare] on '{0}' references '{1}', which is not a readable, accessible instance property of '{2}'",
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
 
-    public static readonly DiagnosticDescriptor UnsupportedAttribute = new(
+    public static readonly DiagnosticDescriptor UnsupportedValidation = new(
         "DMV0005",
-        "Unsupported validation attribute",
-        "[{0}] on '{1}' cannot be source generated: {2}",
+        "Validation cannot be generated",
+        "Validation of '{0}' cannot be generated: {1}",
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true

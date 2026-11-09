@@ -7,7 +7,7 @@ namespace Darp.MvvmValidator.Tests;
 public sealed class AttributeCoverageTests
 {
     [Fact]
-    public void InvalidValues_ShouldReportOneErrorPerProperty()
+    public void InvalidValues_ShouldReportAnErrorForEveryAttribute()
     {
         var viewModel = new AttributeCoverageViewModel
         {
@@ -27,6 +27,7 @@ public sealed class AttributeCoverageTests
             InviteCode = "HELLO",
         };
 
+        // InviteCode is missing: a [CustomValidation] result keeps the member names its method returns, here none
         viewModel
             .GetErrors()
             .SelectMany(e => e.MemberNames)
