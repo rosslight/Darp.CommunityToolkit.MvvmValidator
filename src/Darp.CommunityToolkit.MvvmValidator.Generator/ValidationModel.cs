@@ -215,72 +215,28 @@ internal static class ValidationModel
                 IsTrimSafe: context.Known.IsTrimSafeFor(attribute.Class, propertyType)
             );
 
-        if (!TryGetErrorMessage(context, propertyName, attribute, out string errorMessage))
-            return null;
+        string errorMessage = GetErrorMessage(attribute);
         return isCustomValidation
             ? CreateCustomValidationRule(context, propertyName, propertyType, attribute, errorMessage)
             : CreateCompareRule(context, propertyName, attribute, errorMessage);
     }
 
     /// <summary>
-    /// The message format of an attribute the generated code implements itself, as a C# expression. Checks at compile
-    /// time what <c>ValidationAttribute</c> would otherwise throw for at runtime
+    /// The message format of an attribute the generated code implements itself, as a C# expression. Resource arguments
+    /// go to ValidationAttribute unchanged, which checks them at runtime like for every other attribute
     /// </summary>
-    private static bool TryGetErrorMessage(
-        BuildContext context,
-        string propertyName,
-        AttributeInfo attribute,
-        out string errorMessage
-    )
+    private static string GetErrorMessage(AttributeInfo attribute)
     {
         string? message = attribute.GetNamedString("ErrorMessage");
         var resourceType =
             attribute.NamedArguments.FirstOrDefault(a => a.Key == "ErrorMessageResourceType").Value?.Value
             as INamedTypeSymbol;
         string? resourceName = attribute.GetNamedString("ErrorMessageResourceName");
-        errorMessage = AttributeRenderer.StringLiteral(message);
-        if (resourceType is null && string.IsNullOrEmpty(resourceName))
-            return true;
-
-        string problem;
-        if (!string.IsNullOrEmpty(message))
-            problem = "set either ErrorMessage or ErrorMessageResourceName, not both";
-        else if (resourceType is null || resourceName is null or "")
-            problem = "set both ErrorMessageResourceType and ErrorMessageResourceName";
-        else if (!HasResourceProperty(resourceType, resourceName))
-            problem =
-                $"'{resourceType.Name}' has no static string property '{resourceName}' with a public or internal getter";
-        else
-        {
-            errorMessage =
-                $"GetResourceMessage(typeof({AttributeRenderer.FullName(resourceType)}), {AttributeRenderer.StringLiteral(resourceName)})";
-            return true;
-        }
-        context.Diagnostics.Add(
-            Diagnostic.Create(
-                Diagnostics.UnsupportedAttribute,
-                attribute.Location,
-                attribute.Class.Name,
-                propertyName,
-                problem
-            )
-        );
-        return false;
+        if (resourceType is null && resourceName is null)
+            return AttributeRenderer.StringLiteral(message);
+        string type = resourceType is null ? "null" : $"typeof({AttributeRenderer.FullName(resourceType)})";
+        return $"GetErrorMessage({AttributeRenderer.StringLiteral(message)}, {type}, {AttributeRenderer.StringLiteral(resourceName)})";
     }
-
-    /// <summary> Mirrors the lookup of ValidationAttribute: GetProperty(name, Public | NonPublic | Static) </summary>
-    private static bool HasResourceProperty(INamedTypeSymbol resourceType, string name) =>
-        resourceType
-            .GetMembers(name)
-            .OfType<IPropertySymbol>()
-            .Any(p =>
-                p
-                    is {
-                        IsStatic: true,
-                        Type.SpecialType: SpecialType.System_String,
-                        GetMethod.DeclaredAccessibility: Accessibility.Public or Accessibility.Internal
-                    }
-            );
 
     private static CustomValidationRule? CreateCustomValidationRule(
         BuildContext context,

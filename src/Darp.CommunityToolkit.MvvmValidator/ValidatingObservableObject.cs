@@ -178,25 +178,32 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     }
 
     /// <summary>
-    /// Reads a message format from a resource, with the lookup and checks of <see cref="ValidationAttribute"/>.
-    /// Used by generated code for attributes it implements itself
+    /// Gets the message format of an attribute the generated code implements itself, with the resource lookup and
+    /// checks of <see cref="ValidationAttribute"/>. Used by generated code
     /// </summary>
+    /// <param name="errorMessage"> The <see cref="ValidationAttribute.ErrorMessage"/> set on the attribute </param>
     /// <param name="resourceType"> The <see cref="ValidationAttribute.ErrorMessageResourceType"/> set on the attribute </param>
     /// <param name="resourceName"> The <see cref="ValidationAttribute.ErrorMessageResourceName"/> set on the attribute </param>
     /// <returns> The message format in the current UI culture </returns>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected static string GetResourceMessage(
+    protected static string GetErrorMessage(
+        string? errorMessage,
         [DynamicallyAccessedMembers(
             DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties
         )]
-            Type resourceType,
-        string resourceName
-    ) =>
-        new ResourceMessageAttribute
+            Type? resourceType,
+        string? resourceName
+    )
+    {
+        var attribute = new MessageAttribute
         {
             ErrorMessageResourceType = resourceType,
             ErrorMessageResourceName = resourceName,
-        }.MessageFormat;
+        };
+        if (errorMessage is not null)
+            attribute.ErrorMessage = errorMessage;
+        return attribute.MessageFormat;
+    }
 
     /// <summary> Implements <see cref="CompareAttribute"/> without reflection. Used by generated code </summary>
     /// <param name="value"> The value of the validated property </param>
@@ -237,8 +244,8 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected virtual void ValidateAllPropertiesCore() { }
 
-    /// <summary> Exposes the resource lookup of <see cref="ValidationAttribute"/>, which is protected </summary>
-    private sealed class ResourceMessageAttribute : ValidationAttribute
+    /// <summary> Exposes the message lookup of <see cref="ValidationAttribute"/>, which is protected </summary>
+    private sealed class MessageAttribute : ValidationAttribute
     {
         public string MessageFormat => ErrorMessageString;
     }

@@ -131,29 +131,6 @@ public sealed class ValidationAnalyzerTests
     }
 
     [Fact]
-    public async Task CompareWithMissingResourceProperty_ShouldReportDMV0005()
-    {
-        string[] ids = await GetDiagnosticIdsAsync(
-            """
-            public static class Strings
-            {
-                private static string Hidden => "x";
-            }
-
-            public partial class ViewModel : ValidatingObservableObject
-            {
-                public string? Name { get; set; }
-
-                [Compare(nameof(Name), ErrorMessageResourceType = typeof(Strings), ErrorMessageResourceName = "Hidden")]
-                public string? Repeated { get; set; }
-            }
-            """
-        );
-
-        ids.ShouldBe(["DMV0005"]);
-    }
-
-    [Fact]
     public async Task CompareWithUnknownProperty_ShouldReportDMV0004()
     {
         string[] ids = await GetDiagnosticIdsAsync(
