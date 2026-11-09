@@ -1,0 +1,85 @@
+name: Release Please
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish to NuGet (for example, v0.1.0)
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write       # required for tags + releases
+  pull-requests: write  # required for release PRs
+
+jobs:
+  release-please:
+    if: github.event_name == 'push'
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          manifest-file: .release-please-manifest.json
+          config-file: release-please-config.json
+
+  publish:
+    needs:
+      - release-please
+    if: ${{ !cancelled() && (needs.release-please.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write   # required for NuGet trusted publishing
+    env:
+      RELEASE_TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
+      - name: Pack
+        run: |
+          version="${RELEASE_TAG#v}"
+          dotnet pack src/Darp.CommunityToolkit.MvvmValidator/Darp.CommunityToolkit.MvvmValidator.csproj \
+            --configuration Release --no-build --output ./artifacts /p:Version="$version"
+
+      # The short-lived API key is valid for one hour, so request it right before pushing
+      - name: NuGet login
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: |
+          for package in ./artifacts/*.nupkg; do
+            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done

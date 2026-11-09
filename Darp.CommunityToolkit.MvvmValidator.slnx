@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Darp.CommunityToolkit.MvvmValidator.Generator/Darp.CommunityToolkit.MvvmValidator.Generator.csproj" />
+    <Project Path="src/Darp.CommunityToolkit.MvvmValidator/Darp.CommunityToolkit.MvvmValidator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Darp.CommunityToolkit.MvvmValidator.Generator.Tests/Darp.CommunityToolkit.MvvmValidator.Generator.Tests.csproj" />
+    <Project Path="tests/Darp.CommunityToolkit.MvvmValidator.Tests/Darp.CommunityToolkit.MvvmValidator.Tests.csproj" />
+  </Folder>
+</Solution>

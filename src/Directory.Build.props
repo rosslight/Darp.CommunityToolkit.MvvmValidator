@@ -1,0 +1,30 @@
+<Project>
+  <PropertyGroup>
+    <!-- Framework -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <WarningsAsErrors>Nullable</WarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- Version applied to published packages. Automatically updated by release-please -->
+    <Version>0.0.0</Version>
+
+    <!-- Nuget Package -->
+    <Authors>rosslight GmbH</Authors>
+    <PackageProjectUrl>https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">True</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)..\README.md" Pack="true" PackagePath="/" Link="README.md" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,3 @@
+T:System.ComponentModel.DataAnnotations.Validator;Discovers attributes with reflection. Validation is source generated.
+T:System.ComponentModel.TypeDescriptor;Discovers members with reflection. Validation is source generated.
+T:System.Reflection.PropertyInfo;Validation reads properties through generated code, not reflection.

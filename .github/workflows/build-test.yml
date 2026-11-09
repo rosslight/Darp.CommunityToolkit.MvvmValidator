@@ -1,0 +1,86 @@
+name: Build and test .NET
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Test
+        # Without filters coverlet leaves out every assembly the test process has loaded already
+        run: |
+          dotnet test --no-build --no-progress --results-directory ./coverage-results \
+            --coverlet --coverlet-output-format cobertura \
+            --coverlet-include "[Darp.CommunityToolkit.MvvmValidator]*" \
+            --coverlet-include "[Darp.CommunityToolkit.MvvmValidator.Generator]*" \
+            --coverlet-exclude "[*.Tests]*"
+
+      - name: Attach code-coverage comment
+        uses: rosslight/pr-code-coverage-visualizer@v2.2.0
+        with:
+          files: |
+            coverage-results/coverage.cobertura.*.xml
+          update-comment: true
+          show-changed-lines-only: true
+
+      - name: Publish runtime tests with Native AOT
+        run: dotnet publish tests/Darp.CommunityToolkit.MvvmValidator.Tests/Darp.CommunityToolkit.MvvmValidator.Tests.csproj -c Release -r linux-x64 -o ./artifacts/native-aot-tests /warnaserror
+      - name: Test Native AOT
+        working-directory: ./artifacts/native-aot-tests
+        run: ./Darp.CommunityToolkit.MvvmValidator.Tests
+
+  warnings-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check formatting
+        run: |
+          dotnet tool restore
+          dotnet csharpier check .
+      - name: Build warning-free Debug
+        run: dotnet build "Darp.CommunityToolkit.MvvmValidator.slnx" -c Debug /warnaserror
+      - name: Build warning-free Release
+        run: dotnet build "Darp.CommunityToolkit.MvvmValidator.slnx" -c Release /warnaserror
+
+  test-windows:
+    name: Test on Windows x64
+    runs-on: windows-latest
+    steps:
+      - name: git configure long path
+        run: git config --global core.longpaths true
+      - uses: actions/checkout@v6
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Test generators
+        run: dotnet test --project tests/Darp.CommunityToolkit.MvvmValidator.Generator.Tests/Darp.CommunityToolkit.MvvmValidator.Generator.Tests.csproj --no-build --no-progress
+      - name: Publish runtime tests with Native AOT
+        run: dotnet publish tests/Darp.CommunityToolkit.MvvmValidator.Tests/Darp.CommunityToolkit.MvvmValidator.Tests.csproj -c Release -r win-x64 -o ./artifacts/native-aot-tests /warnaserror
+      - name: Test Native AOT
+        working-directory: ./artifacts/native-aot-tests
+        run: ./Darp.CommunityToolkit.MvvmValidator.Tests.exe

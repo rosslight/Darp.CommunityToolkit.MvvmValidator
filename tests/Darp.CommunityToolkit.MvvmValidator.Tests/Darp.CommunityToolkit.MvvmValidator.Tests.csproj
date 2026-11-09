@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Darp.MvvmValidator.Tests</RootNamespace>
+    <!-- The view models are published with Native AOT in CI, which proves the generated validation is trim safe -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <PublishAot>true</PublishAot>
+    <!-- Fields and hand-written properties with [ObservableProperty] alternatives are tested on purpose -->
+    <NoWarn>$(NoWarn);MVVMTK0042;MVVMTK0056</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Not part of the published Native AOT tests: coverlet cannot be compiled ahead of time -->
+    <PackageReference Include="coverlet.MTP" Version="10.1.0" Condition="'$(_IsPublishing)' != 'true'" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Shouldly" Version="5.0.0-preview.2" />
+    <PackageReference Include="xunit.v3.aot" Version="4.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Darp.CommunityToolkit.MvvmValidator\Darp.CommunityToolkit.MvvmValidator.csproj" />
+    <ProjectReference
+      Include="..\..\src\Darp.CommunityToolkit.MvvmValidator.Generator\Darp.CommunityToolkit.MvvmValidator.Generator.csproj"
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false"
+    />
+  </ItemGroup>
+
+  <!-- What the package's buildTransitive props does for consumers -->
+  <Import Project="..\..\src\Darp.CommunityToolkit.MvvmValidator\buildTransitive\Darp.CommunityToolkit.MvvmValidator.props" />
+</Project>

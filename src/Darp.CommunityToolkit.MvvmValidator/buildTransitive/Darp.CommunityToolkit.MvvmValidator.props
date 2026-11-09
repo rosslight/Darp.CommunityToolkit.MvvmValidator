@@ -1,0 +1,7 @@
+<Project>
+  <ItemGroup>
+    <!-- MVVMTK0006 requires ObservableValidator for [ObservableProperty] members with validation attributes.
+         The analyzer in this package reports DMV0003 instead, which also accepts ValidatingObservableObject. -->
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)Darp.CommunityToolkit.MvvmValidator.globalconfig" />
+  </ItemGroup>
+</Project>

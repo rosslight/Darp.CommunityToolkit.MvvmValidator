@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsAotCompatible>true</IsAotCompatible>
+    <RootNamespace>Darp.MvvmValidator</RootNamespace>
+    <!-- A banned call (BannedSymbols.txt) does not compile, also in a local build without /warnaserror. -->
+    <WarningsAsErrors>$(WarningsAsErrors);RS0030</WarningsAsErrors>
+
+    <Description>An AOT-compatible replacement for the ObservableValidator of CommunityToolkit.Mvvm. Validation code is source generated, so no reflection runs.</Description>
+    <PackageTags>mvvm;validation;aot;trimming;communitytoolkit;sourcegenerator</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Flow the toolkit's source generators to consumers: [ObservableProperty] is part of the API this package builds on -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" PrivateAssets="none" />
+    <!-- Enforces BannedSymbols.txt: the reflection-based validation this package replaces. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="4.14.0" PrivateAssets="all" />
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference
+      Include="..\Darp.CommunityToolkit.MvvmValidator.Generator\Darp.CommunityToolkit.MvvmValidator.Generator.csproj"
+      ReferenceOutputAssembly="false"
+      PrivateAssets="all"
+    />
+    <None
+      Include="..\Darp.CommunityToolkit.MvvmValidator.Generator\bin\$(Configuration)\netstandard2.0\Darp.CommunityToolkit.MvvmValidator.Generator.dll"
+      Pack="true"
+      PackagePath="analyzers/dotnet/cs"
+      Visible="false"
+    />
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive" />
+  </ItemGroup>
+</Project>

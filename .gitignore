@@ -1,0 +1,15 @@
+# IDE
+.idea/
+.vscode/
+.vs/
+*.DotSettings.user
+*.user
+
+# Build artifacts
+artifacts/
+bin/
+obj/
+
+# Verify
+*.received.*
+*.received/
