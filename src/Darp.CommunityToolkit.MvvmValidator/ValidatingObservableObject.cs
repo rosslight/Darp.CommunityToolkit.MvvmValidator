@@ -98,14 +98,13 @@ public abstract class ValidatingObservableObject : ObservableObject, INotifyData
         ValidationResult[] oldErrors = _errors.TryGetValue(propertyName, out ValidationResult[]? existing)
             ? existing
             : [];
-        if (HaveSameMessages(oldErrors, newErrors))
-            return;
-
         bool hadErrors = HasErrors;
         if (newErrors.Length == 0)
             _errors.Remove(propertyName);
         else
             _errors[propertyName] = newErrors;
+        if (HaveSameMessages(oldErrors, newErrors))
+            return;
 
         ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(propertyName));
         if (hadErrors != HasErrors)

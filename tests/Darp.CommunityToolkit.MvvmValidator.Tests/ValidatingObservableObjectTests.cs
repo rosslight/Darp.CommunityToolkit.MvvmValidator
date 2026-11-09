@@ -150,6 +150,20 @@ public sealed class ValidatingObservableObjectTests
     }
 
     [Fact]
+    public void SetErrors_ShouldReplaceResultsWithTheSameMessage_WithoutRaisingErrorsChanged()
+    {
+        var viewModel = new RegistrationViewModel { UserName = "valid" };
+        viewModel.SetErrors(nameof(viewModel.UserName), [new ValidationResult("Taken", ["Old"])]);
+        var raised = 0;
+        viewModel.ErrorsChanged += (_, _) => raised++;
+
+        viewModel.SetErrors(nameof(viewModel.UserName), [new ValidationResult("Taken", ["New"])]);
+
+        viewModel.GetErrors(nameof(viewModel.UserName)).Single().MemberNames.ShouldBe(["New"]);
+        raised.ShouldBe(0);
+    }
+
+    [Fact]
     public void ClearErrors_ShouldRemoveAllErrors()
     {
         var viewModel = new RegistrationViewModel();
