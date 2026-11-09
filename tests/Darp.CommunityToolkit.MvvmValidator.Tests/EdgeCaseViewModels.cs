@@ -73,17 +73,6 @@ public partial class EscapedGenericViewModel<@event> : ValidatingObservableObjec
     public @event? Value { get; set; }
 }
 
-[AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-public sealed class TagAttribute(string tag) : ValidationAttribute(tag)
-{
-    public string Tag { get; } = tag;
-
-    // Like TypeDescriptor, keep one instance per tag instead of one per type
-    public override object TypeId => Tag;
-
-    public override bool IsValid(object? value) => false;
-}
-
 public sealed class CountingAttribute : ValidationAttribute
 {
     public static int Calls { get; set; }
@@ -97,9 +86,6 @@ public sealed class CountingAttribute : ValidationAttribute
 
 public partial class InheritanceBaseViewModel : ValidatingObservableObject
 {
-    [Tag("base")]
-    public virtual string? Tagged { get; set; }
-
     [Counting]
     public virtual string? Counted { get; set; }
 
@@ -113,9 +99,6 @@ public partial class InheritanceBaseViewModel : ValidatingObservableObject
 
 public partial class InheritanceViewModel : InheritanceBaseViewModel
 {
-    [Tag("derived")]
-    public override string? Tagged { get; set; }
-
     public override string? Counted { get; set; }
 
     public new string Hidden => "okay";

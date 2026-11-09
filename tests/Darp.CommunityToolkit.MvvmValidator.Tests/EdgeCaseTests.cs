@@ -52,16 +52,6 @@ public sealed class EdgeCaseTests
     }
 
     [Fact]
-    public void Override_ShouldKeepRepeatableAttributesOfBothProperties()
-    {
-        var viewModel = new InheritanceViewModel();
-
-        viewModel.ValidateProperty(nameof(viewModel.Tagged));
-
-        Messages(viewModel, nameof(viewModel.Tagged)).Order().ShouldBe(["base", "derived"]);
-    }
-
-    [Fact]
     public void ValidateAllProperties_ShouldRunInheritedRulesOfAnOverrideOnce()
     {
         var viewModel = new InheritanceViewModel();

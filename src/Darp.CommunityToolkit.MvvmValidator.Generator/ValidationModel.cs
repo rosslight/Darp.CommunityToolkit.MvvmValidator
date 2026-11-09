@@ -405,7 +405,7 @@ internal static class ValidationModel
             overridden = overridden.OverriddenProperty
         )
         {
-            List<INamedTypeSymbol> declared = attributes.Select(a => a.Class).Where(c => !AllowsMultiple(c)).ToList();
+            List<INamedTypeSymbol> declared = attributes.Select(a => a.Class).ToList();
             AddAttributes(attributes, overridden, isInherited: true, skip: declared);
         }
         if (member is not IFieldSymbol)
@@ -465,20 +465,6 @@ internal static class ValidationModel
                 )
             );
         }
-    }
-
-    /// <summary> Whether [AttributeUsage(AllowMultiple = true)] applies, like TypeDescriptor merging inherited attributes </summary>
-    private static bool AllowsMultiple(INamedTypeSymbol attributeClass)
-    {
-        for (INamedTypeSymbol? current = attributeClass; current is not null; current = current.BaseType)
-        {
-            AttributeData? usage = current
-                .GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "System.AttributeUsageAttribute");
-            if (usage is not null)
-                return usage.NamedArguments.Any(a => a.Key == "AllowMultiple" && a.Value.Value is true);
-        }
-        return false;
     }
 
     private static bool IsPartialHierarchy(INamedTypeSymbol type)
