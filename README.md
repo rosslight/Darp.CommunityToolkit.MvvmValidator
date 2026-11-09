@@ -196,8 +196,8 @@ The package turns off the toolkit's MVVMTK0006, which only accepts `ObservableVa
 
 `[Compare]`, `[MinLength]`, `[MaxLength]` and `[Length]` make the trim analyzer and the trimmer warn where they are
 applied. The package suppresses these warnings when the generated code avoids the reflection they warn about. For
-properties with hand-written accessors, the trimmer's warnings stay, because suppressing them would also hide warnings
-in the accessors.
+properties with hand-written accessors or a field initializer, the warnings stay, because suppressing them would also
+hide warnings in that code.
 
 ## Development
 

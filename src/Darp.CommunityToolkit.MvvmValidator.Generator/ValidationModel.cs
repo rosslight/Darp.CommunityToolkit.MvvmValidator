@@ -27,10 +27,11 @@ internal sealed record TypeValidation(
 /// <param name="IsValidatedByBase">
 /// Whether a base type validates a property with this name, so its ValidateAllProperties already covers it
 /// </param>
-/// <param name="TrimWarningTarget">
-/// The documentation ID of the property, when the trimmer's IL2026 for its attributes can be suppressed: the generated
-/// code avoids the reflection of every attribute constructor that requires unreferenced code, and nobody wrote the
-/// accessors, which the suppression also covers
+/// <param name="TrimWarningTargets">
+/// The documentation IDs of the members whose IL2026 for these attributes can be suppressed: the generated code avoids
+/// the reflection of every attribute constructor that requires unreferenced code, and the suppression, which covers
+/// the whole member, hides no code someone wrote. The trimmer reports at the property, the trim analyzer at an
+/// [ObservableProperty] field
 /// </param>
 internal sealed record ValidatedProperty(
     string Name,
@@ -38,7 +39,7 @@ internal sealed record ValidatedProperty(
     AttributeInfo? Display,
     ImmutableArray<PropertyRule> Rules,
     bool IsValidatedByBase,
-    string? TrimWarningTarget
+    ImmutableArray<string> TrimWarningTargets
 );
 
 internal abstract record PropertyRule;
@@ -135,23 +136,36 @@ internal static class ValidationModel
     }
 
     /// <summary>
-    /// Whether nobody wrote the property's accessors: CommunityToolkit.Mvvm generates them for [ObservableProperty], and
-    /// auto-properties have none. A suppression for a property also covers its accessors, so it must not hide warnings
-    /// in accessor code someone wrote
+    /// Whether the member contains no code someone wrote, because a suppression for a member covers all of its code.
+    /// CommunityToolkit.Mvvm generates the accessors for [ObservableProperty], auto-properties have none, and a field
+    /// without initializer has no code
     /// </summary>
-    private static bool HasNoHandWrittenAccessors(ISymbol member) =>
-        member is IFieldSymbol
-        || member.DeclaringSyntaxReferences.All(r =>
-            r.GetSyntax() is PropertyDeclarationSyntax { ExpressionBody: null, AccessorList: { } accessors }
-            && accessors.Accessors.All(a => a is { Body: null, ExpressionBody: null })
+    private static bool HasNoHandWrittenCode(ISymbol member) =>
+        member.DeclaringSyntaxReferences.All(r =>
+            r.GetSyntax() switch
+            {
+                VariableDeclaratorSyntax field => field.Initializer is null,
+                PropertyDeclarationSyntax { ExpressionBody: null, AccessorList: { } accessors } =>
+                    accessors.Accessors.All(a => a is { Body: null, ExpressionBody: null }),
+                _ => false,
+            }
         );
 
     /// <summary>
-    /// The documentation ID of a property, also for one CommunityToolkit.Mvvm generates and this generator cannot see.
-    /// The trimmer expects it without the <c>~</c> prefix that SuppressMessage uses
+    /// The documentation IDs, without the <c>~</c> prefix of SuppressMessage that the trimmer does not accept. The property
+    /// of an [ObservableProperty] field is generated, so this generator cannot ask for its ID
     /// </summary>
-    private static string GetDocumentationId(INamedTypeSymbol type, string propertyName) =>
-        $"P:{type.GetDocumentationCommentId()?.Substring(2)}.{propertyName}";
+    private static ImmutableArray<string> GetTrimWarningTargets(
+        INamedTypeSymbol type,
+        string propertyName,
+        ISymbol member
+    )
+    {
+        string property = $"P:{type.GetDocumentationCommentId()?.Substring(2)}.{propertyName}";
+        return member is IFieldSymbol && member.GetDocumentationCommentId() is { } field
+            ? [property, field]
+            : [property];
+    }
 
     /// <summary> Mirrors how CommunityToolkit.Mvvm names the property generated for an [ObservableProperty] field </summary>
     private static string GetGeneratedPropertyName(string fieldName)
@@ -274,9 +288,9 @@ internal static class ValidationModel
             display,
             rules.ToImmutableArray(),
             isValidatedByBase,
-            hasSuppressibleTrimWarnings && !hasUnsafeTrimWarnings && HasNoHandWrittenAccessors(member)
-                ? GetDocumentationId(context.Type, name)
-                : null
+            hasSuppressibleTrimWarnings && !hasUnsafeTrimWarnings && HasNoHandWrittenCode(member)
+                ? GetTrimWarningTargets(context.Type, name, member)
+                : []
         );
     }
 

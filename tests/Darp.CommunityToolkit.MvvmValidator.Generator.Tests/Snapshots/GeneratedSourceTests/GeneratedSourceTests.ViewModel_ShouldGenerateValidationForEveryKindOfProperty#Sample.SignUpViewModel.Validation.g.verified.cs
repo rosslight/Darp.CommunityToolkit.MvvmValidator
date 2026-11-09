@@ -3,6 +3,7 @@
 #nullable enable
 [assembly: global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Scope = "member", Target = "P:Sample.SignUpViewModel.Password", Justification = "The generated validation avoids the reflection of these attributes")]
 [assembly: global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Scope = "member", Target = "P:Sample.SignUpViewModel.ConfirmPassword", Justification = "The generated validation avoids the reflection of these attributes")]
+[assembly: global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Scope = "member", Target = "F:Sample.SignUpViewModel._confirmPassword", Justification = "The generated validation avoids the reflection of these attributes")]
 namespace Sample
 {
     partial class SignUpViewModel
