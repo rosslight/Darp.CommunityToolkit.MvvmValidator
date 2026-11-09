@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Darp.MvvmValidator.Tests;
 
@@ -38,11 +39,8 @@ public partial class ResourceViewModel : ValidatingObservableObject
         ErrorMessageResourceType = typeof(TestResources),
         ErrorMessageResourceName = nameof(TestResources.MismatchMessage)
     )]
-    public string? RepeatedUserName
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial string? RepeatedUserName { get; set; }
 
     // The method returns a result without a message, so the attribute's message applies
     [CustomValidation(

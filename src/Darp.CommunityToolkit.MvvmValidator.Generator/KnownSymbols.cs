@@ -38,6 +38,9 @@ internal sealed class KnownSymbols
             "System.ComponentModel.DataAnnotations.ValidationContext"
         );
         Collection = compilation.GetTypeByMetadataName("System.Collections.ICollection");
+        RequiresUnreferencedCodeAttribute = compilation.GetTypeByMetadataName(
+            "System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute"
+        );
         CountingAttributes = s_countingAttributeNames
             .Select(compilation.GetTypeByMetadataName)
             .OfType<INamedTypeSymbol>()
@@ -55,6 +58,7 @@ internal sealed class KnownSymbols
     public INamedTypeSymbol? ValidationResult { get; }
     public INamedTypeSymbol? ValidationContext { get; }
     public INamedTypeSymbol? Collection { get; }
+    public INamedTypeSymbol? RequiresUnreferencedCodeAttribute { get; }
 
     /// <summary> Attributes whose constructor requires unreferenced code because they may reflect on a Count property </summary>
     public ImmutableArray<INamedTypeSymbol> CountingAttributes { get; }
@@ -91,6 +95,12 @@ internal sealed class KnownSymbols
                 )
             );
     }
+
+    /// <summary> Whether creating the attribute is reported as IL2026, because its constructor requires unreferenced code </summary>
+    public bool RequiresUnreferencedCode(IMethodSymbol constructor) =>
+        constructor
+            .GetAttributes()
+            .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, RequiresUnreferencedCodeAttribute));
 
     public static bool InheritsFrom(ITypeSymbol? type, INamedTypeSymbol? baseType)
     {

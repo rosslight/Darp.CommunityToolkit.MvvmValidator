@@ -8,7 +8,12 @@
     <RootNamespace>Darp.MvvmValidator.Tests</RootNamespace>
     <!-- The view models are published with Native AOT in CI, which proves the generated validation is trim safe -->
     <IsAotCompatible>true</IsAotCompatible>
-    <PublishAot>true</PublishAot>
+    <PublishAot Condition="'$(PublishTrimmedTests)' != 'true'">true</PublishAot>
+    <!-- Trimming without AOT keeps attributes on members, so the trimmer also warns about them. Set on the command line
+         with -p:PublishTrimmedTests=true; PublishTrimmed itself would also reach the netstandard2.0 generator projects -->
+    <PublishTrimmed Condition="'$(PublishTrimmedTests)' == 'true'">true</PublishTrimmed>
+    <!-- The test platform's telemetry (Microsoft.ApplicationInsights) is not trim safe -->
+    <NoWarn Condition="'$(PublishTrimmedTests)' == 'true'">$(NoWarn);IL2104</NoWarn>
     <!-- Fields and hand-written properties with [ObservableProperty] alternatives are tested on purpose -->
     <NoWarn>$(NoWarn);MVVMTK0042;MVVMTK0056</NoWarn>
   </PropertyGroup>
