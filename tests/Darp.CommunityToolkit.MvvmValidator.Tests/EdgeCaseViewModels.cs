@@ -49,6 +49,12 @@ public partial class OverridingViewModel : OverriddenBaseViewModel
     public override string? Name { get; set; }
 }
 
+public partial class DisplayOverridingViewModel : OverriddenBaseViewModel
+{
+    [Display(Name = "Login")]
+    public override string? Name { get; set; }
+}
+
 public interface IHasName
 {
     string? Name { get; }

@@ -131,7 +131,7 @@ internal static class ValidationModel
         AttributeInfo? display = null;
         AttributeRule? required = null;
         var hasValidationAttributes = false;
-        var hasOwnValidationAttributes = false;
+        var hasOwnAttributes = false;
         foreach (AppliedAttribute applied in GetAppliedAttributes(member, context.Compilation))
         {
             bool isDisplay = SymbolEqualityComparer.Default.Equals(applied.Class, context.Known.DisplayAttribute);
@@ -139,7 +139,7 @@ internal static class ValidationModel
             if (!isDisplay && !isValidation)
                 continue;
             hasValidationAttributes |= isValidation;
-            hasOwnValidationAttributes |= isValidation && !applied.IsInherited;
+            hasOwnAttributes |= !applied.IsInherited;
             AttributeInfo? attribute = null;
             string error = "the attribute type is not accessible from this assembly";
             if (
@@ -181,7 +181,7 @@ internal static class ValidationModel
         }
         // The generated validation of the base type reads the property virtually, so it covers an override that only
         // inherits its attributes. A property hiding a validated one with 'new' needs its own (possibly empty) rules
-        if (isValidatedByBase && member is IPropertySymbol { IsOverride: true } && !hasOwnValidationAttributes)
+        if (isValidatedByBase && member is IPropertySymbol { IsOverride: true } && !hasOwnAttributes)
             return null;
         if (!hasValidationAttributes && !isValidatedByBase)
             return null;

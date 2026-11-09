@@ -83,6 +83,16 @@ public sealed class EdgeCaseTests
     }
 
     [Fact]
+    public void Override_ShouldUseItsOwnDisplayName()
+    {
+        var viewModel = new DisplayOverridingViewModel();
+
+        viewModel.ValidateProperty(nameof(viewModel.Name));
+
+        Messages(viewModel, nameof(viewModel.Name)).ShouldBe(["The Login field is required."]);
+    }
+
+    [Fact]
     public void Compare_ShouldReadStaticTargets()
     {
         var viewModel = new StaticCompareViewModel { Value = "y" };
