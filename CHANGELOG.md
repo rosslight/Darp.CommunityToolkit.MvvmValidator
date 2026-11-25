@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator/compare/v0.1.1...v0.1.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* include NuGet license attribution ([#7](https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator/issues/7)) ([0233aef](https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator/commit/0233aefb20c0816b6fffb8adfa7bfb15742af24e))
+
 ## [0.1.1](https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator/compare/v0.1.0...v0.1.1) (2026-11-09)
 
 
