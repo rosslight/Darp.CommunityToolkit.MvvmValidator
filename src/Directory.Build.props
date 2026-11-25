@@ -14,6 +14,7 @@
 
     <!-- Nuget Package -->
     <Authors>rosslight GmbH</Authors>
+    <Copyright>Copyright 2026 rosslight GmbH</Copyright>
     <PackageProjectUrl>https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator</PackageProjectUrl>
     <RepositoryUrl>https://github.com/rosslight/Darp.CommunityToolkit.MvvmValidator</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -28,5 +29,6 @@
 
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)..\README.md" Pack="true" PackagePath="/" Link="README.md"/>
+    <None Include="$(MSBuildThisFileDirectory)..\LICENSE.md" Pack="true" PackagePath="/" Link="LICENSE.md"/>
   </ItemGroup>
 </Project>
